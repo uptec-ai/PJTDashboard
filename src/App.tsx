@@ -7,6 +7,7 @@ import VerifyEmailPage from './pages/VerifyEmailPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import FindIdPage from './pages/FindIdPage'
 import DashboardPage from './pages/DashboardPage'
+import ProjectDetailPage from './pages/ProjectDetailPage'
 import AccountPage from './pages/AccountPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 
@@ -28,6 +29,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <DashboardPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/projects/:id"
+            element={
+              <RequireAuth>
+                <ProjectDetailPage />
               </RequireAuth>
             }
           />

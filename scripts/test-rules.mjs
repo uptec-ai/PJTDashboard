@@ -10,6 +10,7 @@ import {
   createUserWithEmailAndPassword,
   getAuth,
   signInAnonymously,
+  signInWithEmailAndPassword,
   signOut,
 } from 'firebase/auth'
 import {
@@ -121,17 +122,57 @@ await expectDenied('셀프 등급 승격(personal→master)', () =>
 )
 await signOut(auth)
 
+console.log('— 하위 컬렉션(장비/일정·이슈) 규칙 —')
+const taskData = {
+  kind: 'issue', title: '규칙테스트 이슈', startDate: '', dueDate: '', status: 'todo',
+  priority: 'mid', severity: 'mid', issueStatus: 'open', resolution: '',
+  createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+}
+const pid = created[0]
+
+// 소유자 A
+await signInWithEmailAndPassword(auth, email, 'Test1234!@#$')
+await expectAllowed('소유자의 이슈 등록', () =>
+  addDoc(collection(db, 'projects', pid, 'tasks'), taskData),
+)
+await signOut(auth)
+
+// 다른 회원 B
+const emailB = `rules-testb-${Math.random().toString(36).slice(2, 8)}@test.local`
+const userB = await createUserWithEmailAndPassword(auth, emailB, 'Test1234!@#$')
+await setDoc(doc(db, 'users', userB.user.uid), {
+  role: 'personal', name: '테스트B', email: emailB, phone: '', disabled: false, createdAt: serverTimestamp(),
+})
+await expectDenied('타인 프로젝트에 이슈 등록', () =>
+  addDoc(collection(db, 'projects', pid, 'tasks'), taskData),
+)
+await expectAllowed('회원의 타 프로젝트 이슈 열람', () =>
+  getDocs(collection(db, 'projects', pid, 'tasks')),
+)
+await signOut(auth)
+
+// 게스트
+const anon2 = await signInAnonymously(auth)
+await setDoc(doc(db, 'users', anon2.user.uid), {
+  role: 'guest', name: '게스트', email: '', phone: '', disabled: false, createdAt: serverTimestamp(),
+})
+await expectDenied('게스트의 비공개 프로젝트 이슈 열람', () =>
+  getDocs(collection(db, 'projects', pid, 'tasks')),
+)
+await signOut(auth)
+
 // ===== 테스트 데이터 정리 (에뮬레이터 관리자 권한) =====
 const ADMIN = { Authorization: 'Bearer owner' }
 for (const id of created) {
   await fetch(`http://127.0.0.1:8080/v1/projects/demo-gcs-dashboard/databases/(default)/documents/projects/${id}`, { method: 'DELETE', headers: ADMIN })
 }
-await fetch(`http://127.0.0.1:8080/v1/projects/demo-gcs-dashboard/databases/(default)/documents/users/${anon.user.uid}`, { method: 'DELETE', headers: ADMIN })
-await fetch(`http://127.0.0.1:8080/v1/projects/demo-gcs-dashboard/databases/(default)/documents/users/${user.user.uid}`, { method: 'DELETE', headers: ADMIN })
+for (const uid of [anon.user.uid, user.user.uid, userB.user.uid, anon2.user.uid]) {
+  await fetch(`http://127.0.0.1:8080/v1/projects/demo-gcs-dashboard/databases/(default)/documents/users/${uid}`, { method: 'DELETE', headers: ADMIN })
+}
 await fetch('http://127.0.0.1:9099/emulator/v1/projects/demo-gcs-dashboard/accounts:delete', {
   method: 'POST',
   headers: { ...ADMIN, 'Content-Type': 'application/json' },
-  body: JSON.stringify({ localIds: [anon.user.uid, user.user.uid] }),
+  body: JSON.stringify({ localIds: [anon.user.uid, user.user.uid, userB.user.uid, anon2.user.uid] }),
 }).catch(() => {})
 
 console.log(`\n결과: ${pass}개 통과, ${fail}개 실패`)

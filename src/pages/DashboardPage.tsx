@@ -53,7 +53,8 @@ export default function DashboardPage() {
     const nearest = dueSoon
       .map((r) => daysLeft(r.dueDate)!)
       .sort((a, b) => a - b)[0]
-    return { total: rows.length, active: active.length, avg, dueSoon: dueSoon.length, nearest }
+    const issues = rows.reduce((a, r) => a + (r.openIssueCount ?? 0), 0)
+    return { total: rows.length, active: active.length, avg, dueSoon: dueSoon.length, nearest, issues }
   }, [rows])
 
   // ===== 필터 + 정렬 =====
@@ -105,8 +106,8 @@ export default function DashboardPage() {
           </div>
           <div className="kpi">
             <span className="k-label"><span className="k-dot k-dot-crit" />미해결 이슈</span>
-            <span className="k-value">—</span>
-            <span className="k-hint">Phase 3에서 집계</span>
+            <span className="k-value">{kpi.issues}<small>건</small></span>
+            <span className="k-hint">{kpi.issues > 0 ? '프로젝트 상세에서 확인' : '모두 해결됨'}</span>
           </div>
         </div>
 

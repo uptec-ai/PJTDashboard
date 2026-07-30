@@ -304,3 +304,94 @@ table.list select {
 @media (max-width: 560px) {
   .form-grid, .form-grid-3 { grid-template-columns: 1fr; }
 }
+
+/* ===== 상세 페이지 ===== */
+.crumb { font-size: 13px; }
+.card-click { cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+.card-click:hover { border-color: var(--accent); transform: translateY(-1px); }
+.detail-head { display: flex; flex-direction: column; gap: 10px; }
+.dh-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dh-top h1 { font-size: 22px; }
+.dh-right { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 12.5px; }
+.dh-progress { display: flex; align-items: center; gap: 14px; }
+.dh-progress .big { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
+.dh-progress .big small { font-size: 15px; color: var(--ink-2); font-weight: 600; }
+.dh-progress .bar { flex: 1; height: 9px; }
+
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--grid); }
+.tabs button {
+  padding: 9px 14px; font-size: 13.5px; color: var(--muted);
+  background: transparent; border: 0; border-bottom: 2px solid transparent;
+  cursor: pointer; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.tabs button.on { color: var(--accent); font-weight: 700; border-bottom-color: var(--accent); }
+.tabs button:disabled { opacity: 0.45; cursor: not-allowed; }
+.tab-badge {
+  font-size: 10.5px; font-weight: 800; color: #fff;
+  background: var(--critical); border-radius: 999px; padding: 0 6px;
+}
+
+/* 목표 보기 (개요 탭) */
+.goal-list { display: flex; flex-direction: column; gap: 10px; }
+.goal-view { display: flex; flex-direction: column; gap: 5px; }
+.goal-view .g-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.goal-view .g-row b { margin-left: auto; font-variant-numeric: tabular-nums; }
+.by { font-size: 10.5px; font-weight: 700; border-radius: 4px; padding: 1px 6px; }
+.by-ai { color: var(--accent); background: var(--accent-soft); }
+.by-user { color: var(--ink-2); border: 1px solid var(--grid); }
+
+/* ===== 칩 (장비 상태, 이슈 심각도 등) ===== */
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 700; border-radius: 999px;
+  padding: 2px 9px; white-space: nowrap;
+}
+.chip-good { color: var(--good-text); background: rgba(12, 163, 12, 0.12); }
+.chip-warn { color: var(--ink); background: var(--warning-soft); }
+.chip-crit { color: var(--critical); background: var(--critical-soft); }
+.chip-mute { color: var(--ink-2); border: 1px solid var(--grid); }
+.chip-accent { color: var(--accent); background: var(--accent-soft); }
+.mono { font-variant-numeric: tabular-nums; }
+
+/* ===== 일정/이슈 목록 ===== */
+.task-list { display: flex; flex-direction: column; }
+.task-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 6px; border-bottom: 1px solid var(--grid);
+}
+.task-row:last-child { border-bottom: 0; }
+.task-open { background: var(--critical-soft); border-radius: 8px; }
+.task-icon { flex: none; }
+.task-main { flex: 1; min-width: 0; }
+.task-title { font-size: 13.5px; font-weight: 600; }
+.task-res { font-weight: 400; font-size: 12.5px; }
+.task-sub { font-size: 11.5px; }
+.task-actions { display: flex; gap: 5px; flex: none; }
+
+/* IO 포트 타입 select (장비 폼) */
+.io-type { width: 76px; flex: none; }
+
+/* ===== FullCalendar 테마 연동 ===== */
+.calendar-wrap { display: flex; flex-direction: column; gap: 8px; }
+.fc {
+  --fc-border-color: var(--grid);
+  --fc-page-bg-color: var(--surface);
+  --fc-neutral-bg-color: var(--plane);
+  --fc-today-bg-color: var(--accent-soft);
+  --fc-event-border-color: transparent;
+  font-size: 12.5px;
+}
+.fc .fc-toolbar-title { font-size: 16px; font-weight: 800; }
+.fc .fc-button {
+  background: var(--surface); border: 1px solid var(--grid); color: var(--ink-2);
+  font-size: 12.5px; padding: 4px 10px;
+}
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--grid); }
+.fc a { color: var(--ink); }
+.fc .fc-daygrid-day-number { font-size: 12px; }
+.fc .fc-event { font-size: 11.5px; border-radius: 4px; padding: 1px 4px; cursor: pointer; }
+.fc .ev-schedule { background: var(--accent); color: #fff; }
+.fc .ev-issue { background: var(--critical); color: #fff; }
+.fc .ev-done { background: var(--baseline); color: var(--ink); opacity: 0.7; }
