@@ -80,7 +80,7 @@ export default function LoginPage() {
   return (
     <div className="center-page">
       <form className="auth-card" onSubmit={handleLogin}>
-        <div className="logo">📊 <em>King</em>Board</div>
+        <div className="logo">📊 <em>Kong</em>Board</div>
         <div className="sub">개인 프로젝트 관리 대시보드</div>
 
         <div className="field">

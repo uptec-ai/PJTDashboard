@@ -16,7 +16,7 @@ export default function TopBar() {
 
   return (
     <header className="topbar">
-      <Link to="/" className="brand">📊 <em>King</em>Board</Link>
+      <Link to="/" className="brand">📊 <em>Kong</em>Board</Link>
       <div className="spacer" />
       <nav className="topnav">
         <Link to="/">📋 프로젝트 관리</Link>

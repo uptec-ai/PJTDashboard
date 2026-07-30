@@ -1,4 +1,4 @@
-# KingBoard — 개인 프로젝트 관리 대시보드 (PJTDashboard)
+# KongBoard — 개인 프로젝트 관리 대시보드 (PJTDashboard)
 
 GitHub와 달리 **개인 프로젝트의 등록·관리·진행률**에 특화된 대시보드 웹입니다.
 Firebase(Auth + Firestore + Storage/GCS) 기반이며, 개발 중에는 로컬 에뮬레이터로 **비용 0원·계정 불필요**로 동작합니다.
