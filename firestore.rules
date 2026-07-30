@@ -1,0 +1,78 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isMaster() {
+      return signedIn() && profile().role == 'master';
+    }
+
+    function notDisabled() {
+      return signedIn() && !(profile().get('disabled', false) == true);
+    }
+
+    function isAnonymous() {
+      return request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    // ---------- 회원 ----------
+    match /users/{uid} {
+      // 본인 또는 마스터만 열람. 회원 관리 목록 조회는 마스터만.
+      allow get: if signedIn() && (request.auth.uid == uid || isMaster());
+      allow list: if isMaster();
+
+      // 가입 시 본인 문서 생성: 익명은 guest, 일반 가입은 personal만 허용
+      allow create: if signedIn() && request.auth.uid == uid
+        && ((isAnonymous() && request.resource.data.role == 'guest')
+            || (!isAnonymous() && request.resource.data.role == 'personal'))
+        && request.resource.data.get('disabled', false) == false;
+
+      // 본인 수정: 역할/비활성화 필드는 변경 불가. 마스터: 전체 수정 가능
+      allow update: if (signedIn() && request.auth.uid == uid
+                        && request.resource.data.role == resource.data.role
+                        && request.resource.data.get('disabled', false) == resource.data.get('disabled', false))
+                    || isMaster();
+
+      // 탈퇴: 본인 또는 마스터
+      allow delete: if (signedIn() && request.auth.uid == uid) || isMaster();
+    }
+
+    // ---------- ID 찾기: 휴대폰 번호 → 마스킹된 이메일 ----------
+    // 마스킹된 이메일만 저장하므로 공개 읽기 허용
+    match /emailLookup/{phone} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn();
+      allow delete: if signedIn();
+      allow update: if false;
+    }
+
+    // ---------- 프로젝트 (Phase 2에서 화면 구현, 규칙 선반영) ----------
+    match /projects/{pid} {
+      // 게스트는 공개 프로젝트만, 회원은 전체 열람
+      allow read: if notDisabled()
+        && (!isAnonymous() || resource.data.get('isPublic', false) == true || isMaster());
+
+      allow create: if notDisabled() && !isAnonymous()
+        && request.resource.data.ownerUid == request.auth.uid;
+
+      allow update, delete: if notDisabled()
+        && (resource.data.ownerUid == request.auth.uid || isMaster());
+
+      match /{sub=**} {
+        allow read: if notDisabled();
+        allow write: if notDisabled()
+          && (get(/databases/$(database)/documents/projects/$(pid)).data.ownerUid == request.auth.uid
+              || isMaster());
+      }
+    }
+  }
+}
