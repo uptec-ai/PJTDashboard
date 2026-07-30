@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
@@ -23,6 +24,16 @@ export default function DashboardPage() {
   const [sortKey, setSortKey] = useState<SortKey>('latest')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<ProjectRow | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // 상단 메뉴 "프로젝트 등록" 클릭(/?new=1) → 등록 모달 자동 열기
+  useEffect(() => {
+    if (searchParams.get('new') === '1' && !isGuest) {
+      setEditing(null)
+      setModalOpen(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, isGuest, setSearchParams])
 
   useEffect(() => {
     if (!user) return

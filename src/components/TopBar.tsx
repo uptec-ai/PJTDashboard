@@ -19,7 +19,8 @@ export default function TopBar() {
       <Link to="/" className="brand">📊 <em>King</em>Board</Link>
       <div className="spacer" />
       <nav className="topnav">
-        <Link to="/">홈</Link>
+        <Link to="/">📋 프로젝트 관리</Link>
+        {!user?.isAnonymous && <Link to="/?new=1">➕ 프로젝트 등록</Link>}
         {!user?.isAnonymous && <Link to="/account">내 정보</Link>}
         {role === 'master' && <Link to="/admin/users">회원 관리</Link>}
       </nav>
