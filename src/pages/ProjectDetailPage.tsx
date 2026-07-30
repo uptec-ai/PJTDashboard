@@ -6,12 +6,13 @@ import { useAuth } from '../contexts/AuthContext'
 import TopBar from '../components/TopBar'
 import EquipmentTab from '../components/EquipmentTab'
 import TasksTab from '../components/TasksTab'
+import DocumentsTab from '../components/DocumentsTab'
 import ProjectFormModal from '../components/ProjectFormModal'
 import { ddayLabel } from '../lib/projects'
 import { STATUS_LABEL } from '../types'
 import type { Project, ProjectRow } from '../types'
 
-type Tab = 'overview' | 'equipment' | 'tasks'
+type Tab = 'overview' | 'equipment' | 'tasks' | 'docs'
 
 const STATUS_CLASS: Record<string, string> = {
   active: 'pill-run',
@@ -107,7 +108,7 @@ export default function ProjectDetailPage() {
           <button className={tab === 'tasks' ? 'on' : ''} onClick={() => setTab('tasks')}>
             일정 · 이슈{(project.openIssueCount ?? 0) > 0 && <span className="tab-badge">{project.openIssueCount}</span>}
           </button>
-          <button disabled title="Phase 4에서 구현">문서</button>
+          <button className={tab === 'docs' ? 'on' : ''} onClick={() => setTab('docs')}>문서</button>
           <button disabled title="Phase 5에서 구현">연동 이력</button>
         </div>
 
@@ -140,6 +141,7 @@ export default function ProjectDetailPage() {
 
         {tab === 'equipment' && <EquipmentTab pid={project.id} canEdit={canEdit} />}
         {tab === 'tasks' && <TasksTab pid={project.id} canEdit={canEdit} />}
+        {tab === 'docs' && <DocumentsTab pid={project.id} canEdit={canEdit} />}
       </main>
 
       {editOpen && <ProjectFormModal editing={project} onClose={() => setEditOpen(false)} />}

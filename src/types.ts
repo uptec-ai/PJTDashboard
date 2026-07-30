@@ -145,3 +145,24 @@ export interface Task {
 export interface TaskRow extends Task {
   id: string
 }
+
+// ===== 문서 (버전 관리) =====
+export type DocSource = 'user' | 'ai'
+
+export interface DocumentVersion {
+  name: string // 문서 이름 (같은 이름 = 같은 문서의 새 버전)
+  version: number // 1부터 증가
+  fileName: string // 원본 파일명
+  storagePath: string // GCS(Storage) 경로
+  contentType: string
+  size: number // bytes
+  source: DocSource // user=직접 업로드, ai=Claude 재작성본(Phase 5)
+  textContent: string | null // md/txt 계열의 본문 (보기·diff용, 대용량이면 null)
+  diffAdded: number | null // 이전 버전 대비 추가 줄 수
+  diffRemoved: number | null // 이전 버전 대비 삭제 줄 수
+  createdAt?: unknown
+}
+
+export interface DocumentVersionRow extends DocumentVersion {
+  id: string
+}
