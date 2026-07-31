@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { collection, onSnapshot, query } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { deleteEquipment } from '../lib/subitems'
@@ -17,8 +17,14 @@ interface Props {
   canEdit: boolean
 }
 
+type SortKey = 'created' | 'name' | 'ip'
+
+const toMillis = (v: unknown): number =>
+  v && typeof v === 'object' && 'toMillis' in v ? (v as { toMillis: () => number }).toMillis() : 0
+
 export default function EquipmentTab({ pid, canEdit }: Props) {
   const [rows, setRows] = useState<EquipmentRow[]>([])
+  const [sortKey, setSortKey] = useState<SortKey>('created')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<EquipmentRow | null>(null)
 
@@ -27,6 +33,24 @@ export default function EquipmentTab({ pid, canEdit }: Props) {
       setRows(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Equipment) }))),
     )
   }, [pid])
+
+  const sorted = useMemo(() => {
+    const list = [...rows]
+    if (sortKey === 'name') {
+      list.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+    } else if (sortKey === 'ip') {
+      // 숫자 인식 정렬: 192.168.0.2 < 192.168.0.10, COM3 < COM10. IP 없는 장비는 뒤로
+      list.sort((a, b) => {
+        if (!a.ip && !b.ip) return 0
+        if (!a.ip) return 1
+        if (!b.ip) return -1
+        return a.ip.localeCompare(b.ip, undefined, { numeric: true })
+      })
+    } else {
+      list.sort((a, b) => toMillis(a.createdAt) - toMillis(b.createdAt)) // 등록 순서
+    }
+    return list
+  }, [rows, sortKey])
 
   const openNew = () => { setEditing(null); setModalOpen(true) }
   const openEdit = (r: EquipmentRow) => { setEditing(r); setModalOpen(true) }
@@ -40,7 +64,14 @@ export default function EquipmentTab({ pid, canEdit }: Props) {
     <section className="panel">
       <div className="row-between">
         <h3>투입 장비 ({rows.length})</h3>
-        {canEdit && <button className="btn btn-sm btn-primary" onClick={openNew}>+ 장비 등록</button>}
+        <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select className="sort" value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
+            <option value="created">정렬: 등록순</option>
+            <option value="name">정렬: 장비명순</option>
+            <option value="ip">정렬: IP순</option>
+          </select>
+          {canEdit && <button className="btn btn-sm btn-primary" onClick={openNew}>+ 장비 등록</button>}
+        </span>
       </div>
 
       {rows.length === 0 ? (
@@ -55,7 +86,7 @@ export default function EquipmentTab({ pid, canEdit }: Props) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {sorted.map((r) => (
                 <tr key={r.id}>
                   <td>{r.name}</td>
                   <td className="mono">{r.ip || '—'}</td>
