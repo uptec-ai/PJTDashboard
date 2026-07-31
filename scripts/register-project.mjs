@@ -251,6 +251,36 @@ for (const m of draft.metrics ?? []) {
   console.log(`  📈 지표 "${metricName}" ${found ? '갱신' : '등록'} (${points.length}개 값)`)
 }
 
+// ===== 업데이트 이력 — 굵직한 변경만 (같은 날짜+제목은 건너뜀) =====
+if (Array.isArray(draft.updates) && draft.updates.length > 0) {
+  const existingUpd = await (await fetch(`${FS}/documents/projects/${pid}/updates`, { headers: ADMIN })).json()
+  const seen = new Set(
+    (existingUpd.documents ?? []).map(
+      (d) => `${d.fields?.date?.stringValue ?? ''}|${d.fields?.title?.stringValue ?? ''}`,
+    ),
+  )
+  let added = 0
+  const KINDS = ['feature', 'view', 'db', 'comm', 'fix', 'etc']
+  for (const u of draft.updates) {
+    const date = String(u.date ?? '')
+    const title = String(u.title ?? '').trim()
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !title || seen.has(`${date}|${title}`)) continue
+    await fetch(`${FS}/documents/projects/${pid}/updates`, {
+      method: 'POST', headers: ADMIN,
+      body: JSON.stringify({
+        fields: {
+          date: enc(date),
+          title: enc(title),
+          kind: enc(KINDS.includes(u.kind) ? u.kind : 'etc'),
+          createdAt: enc(now),
+        },
+      }),
+    })
+    added++
+  }
+  if (added > 0) console.log(`  📝 업데이트 이력 ${added}건 기록`)
+}
+
 // ===== 문서(AI 재작성본) 업로드 — 같은 이름이면 다음 버전 + 이전 버전과 diff =====
 let docCount = 0
 for (const d of draft.documents ?? []) {

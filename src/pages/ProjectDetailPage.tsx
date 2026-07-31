@@ -8,7 +8,7 @@ import OverviewTab from '../components/OverviewTab'
 import EquipmentTab from '../components/EquipmentTab'
 import TasksTab from '../components/TasksTab'
 import DocumentsTab from '../components/DocumentsTab'
-import ActivityTab from '../components/ActivityTab'
+import UpdatesTab from '../components/UpdatesTab'
 import ProjectFormModal from '../components/ProjectFormModal'
 import { ddayLabel } from '../lib/projects'
 import { STATUS_LABEL } from '../types'
@@ -113,7 +113,7 @@ export default function ProjectDetailPage() {
                 일정 · 이슈{(project.openIssueCount ?? 0) > 0 && <span className="tab-badge">{project.openIssueCount}</span>}
               </button>
               <button className={tab === 'docs' ? 'on' : ''} onClick={() => setTab('docs')}>문서</button>
-              <button className={tab === 'activity' ? 'on' : ''} onClick={() => setTab('activity')}>연동 이력</button>
+              <button className={tab === 'activity' ? 'on' : ''} onClick={() => setTab('activity')}>업데이트 이력</button>
             </>
           )}
           {isGuest && <span className="guest-note muted">🔒 장비·일정·문서는 회원 전용입니다</span>}
@@ -126,7 +126,7 @@ export default function ProjectDetailPage() {
         {tab === 'equipment' && <EquipmentTab pid={project.id} canEdit={canEdit} />}
         {tab === 'tasks' && <TasksTab pid={project.id} canEdit={canEdit} />}
         {tab === 'docs' && <DocumentsTab pid={project.id} canEdit={canEdit} />}
-        {tab === 'activity' && <ActivityTab pid={project.id} />}
+        {tab === 'activity' && <UpdatesTab pid={project.id} />}
       </main>
 
       {editOpen && <ProjectFormModal editing={project} onClose={() => setEditOpen(false)} />}

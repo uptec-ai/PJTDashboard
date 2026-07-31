@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { collection, getDocs, onSnapshot, query } from 'firebase/firestore'
+import FullCalendar from '@fullcalendar/react'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import koLocale from '@fullcalendar/core/locales/ko'
+import type { EventInput } from '@fullcalendar/core'
 import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
 import ProgressChart from './ProgressChart'
-import ActivityHeatmap from './ActivityHeatmap'
 import MermaidDiagram from './MermaidDiagram'
 import MetricsSection from './MetricsSection'
 import type { ProjectRow } from '../types'
@@ -69,6 +72,25 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
     return () => { active = false }
   }, [project.id, isGuest])
 
+  // 활동 캘린더 이벤트: 원본 저장소 커밋(파랑) + 대시보드 기록(회색)
+  const activityEvents: EventInput[] = useMemo(() => {
+    const events: EventInput[] = (project.commitDays ?? []).map((d) => ({
+      title: `커밋 ${d.count}건`,
+      start: d.date,
+      allDay: true,
+      classNames: ['ev-schedule'],
+    }))
+    const recordCount = new Map<string, number>()
+    for (const d of activityDates) {
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      recordCount.set(key, (recordCount.get(key) ?? 0) + 1)
+    }
+    for (const [date, n] of recordCount) {
+      events.push({ title: `기록 ${n}건`, start: date, allDay: true, classNames: ['ev-done'] })
+    }
+    return events
+  }, [project.commitDays, activityDates])
+
   return (
     <>
       {/* 부가효과 지표 — 게스트에게도 공개되는 성과 지표 */}
@@ -83,17 +105,18 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
           </section>
 
           <section className="panel">
-            <h3>주간 활동</h3>
-            <p className="ph muted">커밋·일정·이슈·문서·연동 기록 횟수 (최근 12주)</p>
-            <ActivityHeatmap
-              dates={[
-                ...activityDates,
-                // 원본 저장소의 커밋 활동 (등록 시 git 이력에서 수집)
-                ...(project.commitDays ?? []).flatMap((d) =>
-                  Array.from({ length: d.count }, () => new Date(`${d.date}T12:00:00`)),
-                ),
-              ]}
-            />
+            <h3>활동 캘린더</h3>
+            <p className="ph muted">커밋(파랑)과 대시보드 기록(회색)을 날짜별로 표시</p>
+            <div className="calendar-wrap">
+              <FullCalendar
+                plugins={[dayGridPlugin]}
+                initialView="dayGridMonth"
+                locale={koLocale}
+                events={activityEvents}
+                height="auto"
+                dayMaxEventRows={2}
+              />
+            </div>
           </section>
         </div>
       )}

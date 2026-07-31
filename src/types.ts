@@ -177,6 +177,29 @@ export interface DocumentVersionRow extends DocumentVersion {
   id: string
 }
 
+// ===== 업데이트 이력 (프로그램의 굵직한 변경 — 기능/화면/DB/통신 추가 등) =====
+export type UpdateKind = 'feature' | 'view' | 'db' | 'comm' | 'fix' | 'etc'
+
+export const UPDATE_KIND_LABEL: Record<UpdateKind, string> = {
+  feature: '기능',
+  view: '화면',
+  db: 'DB',
+  comm: '통신',
+  fix: '수정',
+  etc: '기타',
+}
+
+export interface UpdateEntry {
+  date: string // YYYY-MM-DD
+  title: string // 한 줄 요약 (사소한 변경은 기록하지 않음)
+  kind: UpdateKind
+  createdAt?: unknown
+}
+
+export interface UpdateEntryRow extends UpdateEntry {
+  id: string
+}
+
 // ===== 부가효과 지표 (발전율·사용량 등 프로젝트 성과 지표) =====
 export interface MetricPoint {
   month: string // 'YYYY-MM'
