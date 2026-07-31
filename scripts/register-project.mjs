@@ -135,11 +135,15 @@ const common = {
   sequenceMermaid: String(draft.sequenceMermaid ?? ''),
   updatedAt: now,
 }
-// 커밋 활동 달력 (git log 날짜별 커밋 수) — 제공된 경우에만 갱신
+// 커밋 활동 달력 (git log 날짜별 커밋 수 + 메시지) — 제공된 경우에만 갱신
 if (Array.isArray(draft.commitActivity)) {
   common.commitDays = draft.commitActivity
     .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d.date)))
-    .map((d) => ({ date: String(d.date), count: Math.max(1, Number(d.count) || 1) }))
+    .map((d) => ({
+      date: String(d.date),
+      count: Math.max(1, Number(d.count) || 1),
+      messages: (d.messages ?? []).slice(0, 30).map((m) => String(m).slice(0, 200)),
+    }))
 }
 
 let pid

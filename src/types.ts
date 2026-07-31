@@ -47,7 +47,7 @@ export interface Project {
   openIssueCount?: number // 미해결 이슈 수 (이슈 생성/해결 시 자동 유지)
   workflowNote?: string // 프로젝트 동작 설명 (등록 시 Claude가 채움, 수정 가능)
   sequenceMermaid?: string // 시퀀스 다이어그램 (Mermaid 코드)
-  commitDays?: { date: string; count: number }[] // 원본 저장소의 날짜별 커밋 수 (주간 활동 히트맵용)
+  commitDays?: { date: string; count: number; messages?: string[] }[] // 날짜별 커밋 수+메시지 (활동 캘린더용)
   ownerUid: string
   createdAt?: unknown
   updatedAt?: unknown

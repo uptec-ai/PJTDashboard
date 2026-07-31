@@ -11,7 +11,7 @@ interface Props {
   canEdit: boolean
 }
 
-/** 부가효과 지표 섹션 — 발전율·사용량 등 프로젝트 성과 지표 (게스트에게도 공개) */
+/** 부가효과 지표 — 발전율·사용량 등 프로젝트 성과 지표 (단일 패널, 게스트에게도 공개) */
 export default function MetricsSection({ pid, canEdit }: Props) {
   const [rows, setRows] = useState<MetricRow[]>([])
   const [modalOpen, setModalOpen] = useState(false)
@@ -37,60 +37,50 @@ export default function MetricsSection({ pid, canEdit }: Props) {
 
   return (
     <>
-      {rows.length === 0 ? (
-        <section className="panel">
-          <div className="row-between">
-            <h3>부가효과 지표</h3>
-            <button className="btn btn-sm btn-primary" onClick={openNew}>+ 지표 추가</button>
-          </div>
+      <section className="panel">
+        <div className="row-between">
+          <h3>부가효과 지표</h3>
+          {canEdit && <button className="btn btn-sm btn-primary" onClick={openNew}>+ 지표 추가</button>}
+        </div>
+
+        {rows.length === 0 ? (
           <div className="empty">
             발전율·사용량처럼 프로젝트의 성과를 보여주는 지표를 등록하면 월별 차트로 표시됩니다.
-            <br />Claude Code 등록("대시보드에 올려줘") 시에도 자동으로 채울 수 있습니다.
           </div>
-        </section>
-      ) : (
-        <>
-          {canEdit && (
-            <div className="row-between metrics-head">
-              <h3 className="metrics-title">부가효과 지표</h3>
-              <button className="btn btn-sm btn-primary" onClick={openNew}>+ 지표 추가</button>
-            </div>
-          )}
-          <div className="overview-grid">
-            {rows.map((r) => {
-              const { last, delta } = latestDelta(r.points)
-              return (
-                <section key={r.id} className="panel">
-                  <div className="row-between">
-                    <h3>{r.name}</h3>
-                    {canEdit && (
-                      <span style={{ display: 'flex', gap: 5 }}>
-                        <button className="btn btn-sm btn-ghost" onClick={() => openEdit(r)}>편집</button>
-                        <button className="btn btn-sm btn-ghost" onClick={() => handleDelete(r)}>삭제</button>
+        ) : (
+          rows.map((r, idx) => {
+            const { last, delta } = latestDelta(r.points)
+            return (
+              <div key={r.id} className={`metric-block ${idx > 0 ? 'metric-block-sep' : ''}`}>
+                <div className="row-between">
+                  <b style={{ fontSize: 13.5 }}>{r.name}</b>
+                  {canEdit && (
+                    <span style={{ display: 'flex', gap: 5 }}>
+                      <button className="btn btn-sm btn-ghost" onClick={() => openEdit(r)}>편집</button>
+                      <button className="btn btn-sm btn-ghost" onClick={() => handleDelete(r)}>삭제</button>
+                    </span>
+                  )}
+                </div>
+                {last && (
+                  <div className="metric-summary">
+                    <span className="m-value">
+                      {fmtVal(last.value)}<small>{r.unit}</small>
+                    </span>
+                    <span className="m-month muted">{last.month}</span>
+                    {delta !== null && (
+                      <span className={`m-delta ${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}`}>
+                        {delta > 0 ? '▲' : delta < 0 ? '▼' : '—'} {fmtVal(Math.abs(delta))}{r.unit}
+                        <small> 전월 대비</small>
                       </span>
                     )}
                   </div>
-                  {last && (
-                    <div className="metric-summary">
-                      <span className="m-value">
-                        {fmtVal(last.value)}<small>{r.unit}</small>
-                      </span>
-                      <span className="m-month muted">{last.month}</span>
-                      {delta !== null && (
-                        <span className={`m-delta ${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}`}>
-                          {delta > 0 ? '▲' : delta < 0 ? '▼' : '—'} {fmtVal(Math.abs(delta))}{r.unit}
-                          <small> 전월 대비</small>
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  <MetricChart points={r.points} unit={r.unit} />
-                </section>
-              )
-            })}
-          </div>
-        </>
-      )}
+                )}
+                <MetricChart points={r.points} unit={r.unit} />
+              </div>
+            )
+          })
+        )}
+      </section>
 
       {modalOpen && <MetricFormModal pid={pid} editing={editing} onClose={() => setModalOpen(false)} />}
     </>

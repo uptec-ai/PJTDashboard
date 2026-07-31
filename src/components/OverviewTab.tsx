@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { collection, getDocs, onSnapshot, query } from 'firebase/firestore'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
+import interactionPlugin from '@fullcalendar/interaction'
 import koLocale from '@fullcalendar/core/locales/ko'
-import type { EventInput } from '@fullcalendar/core'
+import type { EventClickArg, EventInput } from '@fullcalendar/core'
+import type { DateClickArg } from '@fullcalendar/interaction'
 import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
 import ProgressChart from './ProgressChart'
@@ -16,8 +18,17 @@ interface HistoryPoint {
   progress: number
 }
 
+/** 대시보드 기록 한 건 (활동 캘린더 클릭 상세용) */
+interface DayRecord {
+  dateKey: string // YYYY-MM-DD
+  label: string
+}
+
 const toDate = (v: unknown): Date | null =>
   v && typeof v === 'object' && 'toDate' in v ? (v as { toDate: () => Date }).toDate() : null
+
+const dayKey = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 interface Props {
   project: ProjectRow
@@ -29,7 +40,8 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
   const { user } = useAuth()
   const isGuest = user?.isAnonymous ?? false
   const [history, setHistory] = useState<HistoryPoint[]>([])
-  const [activityDates, setActivityDates] = useState<Date[]>([])
+  const [records, setRecords] = useState<DayRecord[]>([])
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   // 달성률 추이 (실시간) — 게스트에게는 비공개 (내부 진행 이력)
   useEffect(() => {
@@ -46,33 +58,45 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
     })
   }, [project.id, isGuest])
 
-  // 주간 활동 집계 (탭 진입 시 1회): 일정/이슈·문서·연동이력·달성률 기록
-  // 게스트는 회원 전용 데이터에 접근할 수 없으므로 집계하지 않음 (히트맵 숨김)
+  // 대시보드 기록 수집 (탭 진입 시 1회): 일정/이슈·문서·연동·달성률 — 클릭 상세용 라벨 포함
   useEffect(() => {
     if (isGuest) return
     let active = true
     const load = async () => {
-      const dates: Date[] = []
-      const subs: { name: string; field: string }[] = [
-        { name: 'tasks', field: 'updatedAt' },
-        { name: 'documents', field: 'createdAt' },
-        { name: 'activity', field: 'at' },
-        { name: 'progressHistory', field: 'date' },
-      ]
-      for (const s of subs) {
-        const snap = await getDocs(collection(db, 'projects', project.id, s.name)).catch(() => null)
-        for (const d of snap?.docs ?? []) {
-          const t = toDate(d.data()[s.field])
-          if (t) dates.push(t)
-        }
+      const out: DayRecord[] = []
+      const push = (v: unknown, label: string) => {
+        const t = toDate(v)
+        if (t) out.push({ dateKey: dayKey(t), label })
       }
-      if (active) setActivityDates(dates)
+      const [tasks, docs, acts, hist] = await Promise.all([
+        getDocs(collection(db, 'projects', project.id, 'tasks')).catch(() => null),
+        getDocs(collection(db, 'projects', project.id, 'documents')).catch(() => null),
+        getDocs(collection(db, 'projects', project.id, 'activity')).catch(() => null),
+        getDocs(collection(db, 'projects', project.id, 'progressHistory')).catch(() => null),
+      ])
+      for (const d of tasks?.docs ?? []) {
+        const x = d.data()
+        push(x.updatedAt, `${x.kind === 'issue' ? '⚠ 이슈' : '📅 일정'} — ${x.title}`)
+      }
+      for (const d of docs?.docs ?? []) {
+        const x = d.data()
+        push(x.createdAt, `📄 문서 업로드 — ${x.name} v${x.version}`)
+      }
+      for (const d of acts?.docs ?? []) {
+        const x = d.data()
+        push(x.at, `🔄 연동 — ${String(x.summary ?? '').slice(0, 60)}`)
+      }
+      for (const d of hist?.docs ?? []) {
+        const x = d.data()
+        push(x.date, `📈 달성률 ${x.progress}% 기록`)
+      }
+      if (active) setRecords(out)
     }
     load().catch(() => {})
     return () => { active = false }
   }, [project.id, isGuest])
 
-  // 활동 캘린더 이벤트: 원본 저장소 커밋(파랑) + 대시보드 기록(회색)
+  // 캘린더 이벤트: 커밋(파랑) + 기록(회색)
   const activityEvents: EventInput[] = useMemo(() => {
     const events: EventInput[] = (project.commitDays ?? []).map((d) => ({
       title: `커밋 ${d.count}건`,
@@ -81,46 +105,95 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
       classNames: ['ev-schedule'],
     }))
     const recordCount = new Map<string, number>()
-    for (const d of activityDates) {
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      recordCount.set(key, (recordCount.get(key) ?? 0) + 1)
-    }
+    for (const r of records) recordCount.set(r.dateKey, (recordCount.get(r.dateKey) ?? 0) + 1)
     for (const [date, n] of recordCount) {
       events.push({ title: `기록 ${n}건`, start: date, allDay: true, classNames: ['ev-done'] })
     }
     return events
-  }, [project.commitDays, activityDates])
+  }, [project.commitDays, records])
+
+  const handleEventClick = (arg: EventClickArg) => setSelectedDate(arg.event.startStr)
+  const handleDateClick = (arg: DateClickArg) => setSelectedDate(arg.dateStr)
+
+  // 선택한 날짜의 상세 내용
+  const selected = useMemo(() => {
+    if (!selectedDate) return null
+    const commits = (project.commitDays ?? []).find((d) => d.date === selectedDate) ?? null
+    const dayRecords = records.filter((r) => r.dateKey === selectedDate)
+    return { commits, dayRecords }
+  }, [selectedDate, project.commitDays, records])
 
   return (
     <>
-      {/* 부가효과 지표 — 게스트에게도 공개되는 성과 지표 */}
-      <MetricsSection pid={project.id} canEdit={canEdit} />
-
-      {/* 달성률 추이·주간 활동 — 내부 진행 이력이므로 회원 전용 */}
-      {!isGuest && (
+      {/* 1행: 부가효과 지표 | 달성률 추이 */}
+      {isGuest ? (
+        <MetricsSection pid={project.id} canEdit={false} />
+      ) : (
         <div className="overview-grid">
+          <MetricsSection pid={project.id} canEdit={canEdit} />
           <section className="panel">
             <h3>달성률 추이</h3>
             <ProgressChart points={history} />
           </section>
+        </div>
+      )}
 
+      {/* 2행: 활동 캘린더 | 클릭 상세 */}
+      {!isGuest && (
+        <div className="overview-grid">
           <section className="panel">
             <h3>활동 캘린더</h3>
-            <p className="ph muted">커밋(파랑)과 대시보드 기록(회색)을 날짜별로 표시</p>
+            <p className="ph muted">커밋(파랑)·기록(회색)을 클릭하면 오른쪽에 내용이 표시됩니다</p>
             <div className="calendar-wrap">
               <FullCalendar
-                plugins={[dayGridPlugin]}
+                plugins={[dayGridPlugin, interactionPlugin]}
                 initialView="dayGridMonth"
                 locale={koLocale}
                 events={activityEvents}
+                eventClick={handleEventClick}
+                dateClick={handleDateClick}
                 height="auto"
                 dayMaxEventRows={2}
               />
             </div>
           </section>
+
+          <section className="panel">
+            <h3>활동 내용 {selectedDate && <span className="muted day-detail-date">{selectedDate}</span>}</h3>
+            {!selected ? (
+              <div className="empty">캘린더에서 날짜나 커밋/기록을 클릭하면<br />해당 날짜의 내용이 여기에 표시됩니다.</div>
+            ) : (
+              <div className="day-detail">
+                {selected.commits && (
+                  <div className="dd-group">
+                    <b>💻 커밋 {selected.commits.count}건</b>
+                    {selected.commits.messages?.length ? (
+                      <ul>
+                        {selected.commits.messages.map((m, i) => <li key={i}>{m}</li>)}
+                      </ul>
+                    ) : (
+                      <p className="muted dd-hint">커밋 메시지는 다음 "대시보드에 올려줘" 때 수집됩니다.</p>
+                    )}
+                  </div>
+                )}
+                {selected.dayRecords.length > 0 && (
+                  <div className="dd-group">
+                    <b>🗂 대시보드 기록 {selected.dayRecords.length}건</b>
+                    <ul>
+                      {selected.dayRecords.map((r, i) => <li key={i}>{r.label}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {!selected.commits && selected.dayRecords.length === 0 && (
+                  <div className="empty">이 날짜에는 활동이 없습니다.</div>
+                )}
+              </div>
+            )}
+          </section>
         </div>
       )}
 
+      {/* 3행: 목표 */}
       <section className="panel">
         <h3>목표 (마일스톤)</h3>
         {project.goals.length === 0 ? (
@@ -157,6 +230,7 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
         )}
       </section>
 
+      {/* 4행: 동작 설명 · 시퀀스 */}
       <section className="panel">
         <h3>동작 설명 · 시퀀스</h3>
         {!project.workflowNote && !project.sequenceMermaid ? (
