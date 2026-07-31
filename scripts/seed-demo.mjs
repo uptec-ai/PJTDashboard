@@ -46,6 +46,18 @@ const project = {
   goals: [],
   progress: 35,
   progressManual: true,
+  workflowNote:
+    '상위 PC가 Modbus TCP로 게이트웨이에 데이터를 요청하면, 게이트웨이가 CAN으로 BMS에서 셀 전압·온도를 읽어 레지스터에 매핑해 응답한다. 통신 두절 시 3회 재시도 후 알람을 발생시킨다.',
+  sequenceMermaid: [
+    'sequenceDiagram',
+    '    participant PC as 상위 PC',
+    '    participant GW as 게이트웨이',
+    '    participant BMS as BMS',
+    '    PC->>GW: Modbus TCP 읽기 요청',
+    '    GW->>BMS: CAN 프레임 변환·전송',
+    '    BMS-->>GW: 셀 전압·온도 응답',
+    '    GW-->>PC: 레지스터 매핑 후 응답',
+  ].join('\n'),
   openIssueCount: 1,
   ownerUid: masterUid,
   createdAt: now,

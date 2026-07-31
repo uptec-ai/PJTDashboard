@@ -22,6 +22,8 @@ export default function ProjectFormModal({ editing, onClose }: Props) {
   const [goals, setGoals] = useState<Goal[]>([])
   const [progressManual, setProgressManual] = useState(false)
   const [manualProgress, setManualProgress] = useState(0)
+  const [workflowNote, setWorkflowNote] = useState('')
+  const [sequenceMermaid, setSequenceMermaid] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -37,6 +39,8 @@ export default function ProjectFormModal({ editing, onClose }: Props) {
       setGoals(editing.goals)
       setProgressManual(editing.progressManual)
       setManualProgress(editing.progress)
+      setWorkflowNote(editing.workflowNote ?? '')
+      setSequenceMermaid(editing.sequenceMermaid ?? '')
     }
   }, [editing])
 
@@ -70,6 +74,8 @@ export default function ProjectFormModal({ editing, onClose }: Props) {
       goals,
       progress,
       progressManual,
+      workflowNote: workflowNote.trim(),
+      sequenceMermaid: sequenceMermaid.trim(),
     }
 
     setBusy(true)
@@ -207,6 +213,32 @@ export default function ProjectFormModal({ editing, onClose }: Props) {
             <p className="hint muted">목표 {goals.length}개의 평균으로 자동 계산 중</p>
           )}
         </div>
+
+        {/* ===== 동작 설명 · 시퀀스 (선택) ===== */}
+        <details className="form-details">
+          <summary>동작 설명 · 시퀀스 다이어그램 (선택)</summary>
+          <div className="field">
+            <label htmlFor="pf-note">동작 설명</label>
+            <textarea
+              id="pf-note"
+              value={workflowNote}
+              onChange={(e) => setWorkflowNote(e.target.value)}
+              rows={3}
+              placeholder="프로젝트가 어떻게 동작하는지 간단 설명 (Claude 등록 시 자동 작성됨)"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="pf-seq">시퀀스 다이어그램 (Mermaid 코드)</label>
+            <textarea
+              id="pf-seq"
+              value={sequenceMermaid}
+              onChange={(e) => setSequenceMermaid(e.target.value)}
+              rows={5}
+              placeholder={'sequenceDiagram\n    A->>B: 요청\n    B-->>A: 응답'}
+              style={{ fontFamily: 'Consolas, monospace' }}
+            />
+          </div>
+        </details>
 
         {error && <div className="msg msg-error">{error}</div>}
 

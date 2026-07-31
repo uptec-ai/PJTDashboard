@@ -62,7 +62,7 @@ npm run seed -- "원하는비밀번호"
 - [x] Phase 3 — 장비/일정/이슈 (캘린더, 이슈 상태 관리)
 - [x] Phase 4 — 문서 버전 관리 (GCS, diff 표시)
 - [x] Phase 5 — Claude Code 자동 업로드 연동 (kongboard-register 스킬 + 등록 스크립트 + 연동 이력)
-- [ ] Phase 6 — 지표 시각화 (차트·히트맵·시퀀스 다이어그램)
+- [x] Phase 6 — 지표 시각화 (달성률 추이 차트·주간 활동 히트맵·Mermaid 시퀀스 다이어그램)
 
 ## Claude Code 연동 (Phase 5)
 

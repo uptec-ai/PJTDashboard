@@ -125,6 +125,8 @@ const common = {
   goals,
   progress,
   progressManual: goals.length === 0,
+  workflowNote: String(draft.workflowNote ?? ''),
+  sequenceMermaid: String(draft.sequenceMermaid ?? ''),
   updatedAt: now,
 }
 

@@ -4,6 +4,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
 import TopBar from '../components/TopBar'
+import OverviewTab from '../components/OverviewTab'
 import EquipmentTab from '../components/EquipmentTab'
 import TasksTab from '../components/TasksTab'
 import DocumentsTab from '../components/DocumentsTab'
@@ -114,30 +115,7 @@ export default function ProjectDetailPage() {
         </div>
 
         {tab === 'overview' && (
-          <section className="panel">
-            <h3>목표 (마일스톤)</h3>
-            {project.goals.length === 0 ? (
-              <div className="empty">
-                등록된 목표가 없습니다.
-                {canEdit && <><br />"프로젝트 수정"에서 목표를 추가하면 달성률이 자동 계산됩니다.</>}
-              </div>
-            ) : (
-              <div className="goal-list">
-                {project.goals.map((g) => (
-                  <div key={g.id} className="goal-view">
-                    <div className="g-row">
-                      <span>{g.title}</span>
-                      <span className={`by ${g.updatedBy === 'ai' ? 'by-ai' : 'by-user'}`}>
-                        {g.updatedBy === 'ai' ? 'AI' : '사용자'}
-                      </span>
-                      <b>{g.progress}%</b>
-                    </div>
-                    <div className="bar"><i style={{ width: `${g.progress}%` }} /></div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          <OverviewTab project={project} canEdit={canEdit} onEdit={() => setEditOpen(true)} />
         )}
 
         {tab === 'equipment' && <EquipmentTab pid={project.id} canEdit={canEdit} />}
