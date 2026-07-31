@@ -134,11 +134,19 @@ export default function EquipmentFormModal({ pid, editing, onClose }: Props) {
                 <option value="ETC">기타</option>
               </select>
               <input
+                style={{ flex: 1, minWidth: 0 }}
                 value={p.desc}
                 onChange={(e) => setPort(p.id, { desc: e.target.value })}
                 placeholder="용도 (예: 비상정지 입력)"
               />
-              <button type="button" className="btn btn-sm btn-ghost" onClick={() => removePort(p.id)}>✕</button>
+              <button
+                type="button"
+                className="btn btn-sm btn-danger"
+                title="이 포트 삭제"
+                onClick={() => removePort(p.id)}
+              >
+                삭제
+              </button>
             </div>
           ))}
         </div>
