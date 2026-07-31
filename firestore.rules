@@ -71,8 +71,9 @@ service cloud.firestore {
       // 주의: {sub=**}는 규칙 v2에서 빈 경로도 매칭되어 프로젝트 문서 자체가 뚫리므로 사용 금지
       //
       // 게스트 고정 공개 정책:
-      //   게스트 열람 가능 = metrics(부가효과 지표), progressHistory(달성률 추이) — 공개 프로젝트 한정
+      //   게스트 열람 가능 = metrics(부가효과 지표) — 공개 프로젝트 한정
       //   회원 전용       = equipment(장비 IP)·tasks(일정/이슈)·documents(문서)·activity(연동 이력)
+      //                     ·progressHistory(달성률 추이 — 내부 진행 이력)
       match /{sub}/{docId} {
         allow read: if notDisabled() && !isAnonymous();
         allow write: if notDisabled() && !isAnonymous()
@@ -80,11 +81,6 @@ service cloud.firestore {
               || isMaster());
       }
       match /metrics/{docId} {
-        allow read: if notDisabled()
-          && (!isAnonymous()
-              || get(/databases/$(database)/documents/projects/$(pid)).data.get('isPublic', false) == true);
-      }
-      match /progressHistory/{docId} {
         allow read: if notDisabled()
           && (!isAnonymous()
               || get(/databases/$(database)/documents/projects/$(pid)).data.get('isPublic', false) == true);

@@ -28,8 +28,9 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
   const [history, setHistory] = useState<HistoryPoint[]>([])
   const [activityDates, setActivityDates] = useState<Date[]>([])
 
-  // 달성률 추이 (실시간)
+  // 달성률 추이 (실시간) — 게스트에게는 비공개 (내부 진행 이력)
   useEffect(() => {
+    if (isGuest) return
     return onSnapshot(query(collection(db, 'projects', project.id, 'progressHistory')), (snap) => {
       const pts = snap.docs
         .map((d) => {
@@ -40,7 +41,7 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
         .sort((a, b) => a.date.getTime() - b.date.getTime())
       setHistory(pts)
     })
-  }, [project.id])
+  }, [project.id, isGuest])
 
   // 주간 활동 집계 (탭 진입 시 1회): 일정/이슈·문서·연동이력·달성률 기록
   // 게스트는 회원 전용 데이터에 접근할 수 없으므로 집계하지 않음 (히트맵 숨김)
@@ -73,20 +74,21 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
       {/* 부가효과 지표 — 게스트에게도 공개되는 성과 지표 */}
       <MetricsSection pid={project.id} canEdit={canEdit} />
 
-      <div className="overview-grid">
-        <section className="panel">
-          <h3>달성률 추이</h3>
-          <ProgressChart points={history} />
-        </section>
+      {/* 달성률 추이·주간 활동 — 내부 진행 이력이므로 회원 전용 */}
+      {!isGuest && (
+        <div className="overview-grid">
+          <section className="panel">
+            <h3>달성률 추이</h3>
+            <ProgressChart points={history} />
+          </section>
 
-        {!isGuest && (
           <section className="panel">
             <h3>주간 활동</h3>
             <p className="ph muted">일정·이슈·문서·연동 기록 횟수 (최근 12주)</p>
             <ActivityHeatmap dates={activityDates} />
           </section>
-        )}
-      </div>
+        </div>
+      )}
 
       <section className="panel">
         <h3>목표 (마일스톤)</h3>
@@ -107,7 +109,8 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
                   <b>{g.progress}%</b>
                 </div>
                 <div className="bar"><i style={{ width: `${g.progress}%` }} /></div>
-                {(g.items?.length ?? 0) > 0 && (
+                {/* 세부항목 체크리스트 — 내부 작업 내용이므로 게스트에게 숨김 */}
+                {!isGuest && (g.items?.length ?? 0) > 0 && (
                   <ul className="goal-items">
                     {g.items!.map((it) => (
                       <li key={it.id} className={`gi ${it.done ? 'gi-done' : ''}`}>

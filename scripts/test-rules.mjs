@@ -178,7 +178,7 @@ await expectDenied('게스트의 비공개 프로젝트 이슈 열람', () =>
 await expectAllowed('게스트의 공개 프로젝트 지표(metrics) 열람', () =>
   getDocs(collection(db, 'projects', pubRef.id, 'metrics')),
 )
-await expectAllowed('게스트의 공개 프로젝트 달성률 추이 열람', () =>
+await expectDenied('게스트의 공개 프로젝트 달성률 추이 열람', () =>
   getDocs(collection(db, 'projects', pubRef.id, 'progressHistory')),
 )
 await expectDenied('게스트의 공개 프로젝트 장비(IP) 열람', () =>
