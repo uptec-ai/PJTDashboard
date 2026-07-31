@@ -13,16 +13,22 @@
  *   "dueDate": "YYYY-MM-DD",           // 선택
  *   "isPublic": false,
  *   "goals": [{ "title": "목표", "progress": 0 }],  // AI가 제안, 사용자 검토 후
- *   "summary": "이번 등록/업데이트 요약 (연동 이력에 기록)"
+ *   "summary": "이번 등록/업데이트 요약 (연동 이력에 기록)",
+ *   "documents": [                       // 선택: AI 재작성 문서 (md 텍스트)
+ *     { "name": "요구사양서", "fileName": "요구사양서_AI재작성.md", "textContent": "..." }
+ *   ]
  * }
  *
  * 현재는 로컬 에뮬레이터 전용(관리자 권한 REST). 실서버 전환 시 이 스크립트만
  * Cloud Functions HTTP API 호출로 교체하면 스킬은 그대로 동작한다. (Phase 5)
  */
 import { readFileSync } from 'node:fs'
+import { diffCounts, diffLines } from '../src/lib/diff.ts'
 
 const AUTH = 'http://127.0.0.1:9099'
 const FS = 'http://127.0.0.1:8080/v1/projects/demo-gcs-dashboard/databases/(default)'
+const STORAGE = 'http://127.0.0.1:9199'
+const BUCKET = 'demo-gcs-dashboard.appspot.com'
 const ADMIN = { Authorization: 'Bearer owner', 'Content-Type': 'application/json' }
 const MASTER_EMAIL = 'kingkong@dashboard.local'
 
@@ -162,6 +168,73 @@ if (existing) {
   })
 }
 
+// ===== 문서(AI 재작성본) 업로드 — 같은 이름이면 다음 버전 + 이전 버전과 diff =====
+let docCount = 0
+for (const d of draft.documents ?? []) {
+  if (!d.name?.trim() || !d.textContent) continue
+  const docName = d.name.trim()
+  const fileName = String(d.fileName ?? `${docName}_AI재작성.md`)
+
+  // 같은 이름의 기존 버전 조회
+  const versions = (await (await fetch(`${FS}/documents/projects/${pid}:runQuery`, {
+    method: 'POST', headers: ADMIN,
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: 'documents' }],
+        where: { fieldFilter: { field: { fieldPath: 'name' }, op: 'EQUAL', value: { stringValue: docName } } },
+      },
+    }),
+  })).json()).filter((r) => r.document).map((r) => r.document)
+
+  const prevVersion = versions.length
+    ? Math.max(...versions.map((v) => Number(v.fields.version?.integerValue ?? 0)))
+    : 0
+  const prev = versions.find((v) => Number(v.fields.version?.integerValue ?? 0) === prevVersion)
+  const prevText = prev?.fields.textContent?.stringValue ?? null
+
+  let diffAdded = null
+  let diffRemoved = null
+  if (prevText != null) {
+    const c = diffCounts(diffLines(prevText, d.textContent))
+    diffAdded = c.added
+    diffRemoved = c.removed
+  }
+
+  const bytes = new TextEncoder().encode(d.textContent)
+
+  // 메타 문서 생성
+  const metaRes = await fetch(`${FS}/documents/projects/${pid}/documents`, {
+    method: 'POST', headers: ADMIN,
+    body: JSON.stringify({
+      fields: Object.fromEntries(Object.entries({
+        name: docName, version: prevVersion + 1, fileName,
+        storagePath: '', contentType: 'text/markdown', size: bytes.length,
+        source: 'ai', textContent: d.textContent,
+        diffAdded, diffRemoved, createdAt: now,
+      }).map(([k, v]) => [k, enc(v)])),
+    }),
+  })
+  const meta = await metaRes.json()
+  if (!metaRes.ok) { console.error('✖ 문서 메타 생성 실패:', JSON.stringify(meta)); process.exit(1) }
+  const docId = meta.name.split('/').pop()
+
+  // Storage(GCS 에뮬레이터) 업로드
+  const path = `projects/${pid}/docs/${docId}/v${prevVersion + 1}_${fileName}`
+  const up = await fetch(
+    `${STORAGE}/upload/storage/v1/b/${BUCKET}/o?uploadType=media&name=${encodeURIComponent(path)}`,
+    { method: 'POST', headers: { Authorization: 'Bearer owner', 'Content-Type': 'text/markdown' }, body: bytes },
+  )
+  if (!up.ok) { console.error('✖ 문서 파일 업로드 실패:', await up.text()); process.exit(1) }
+
+  await fetch(`${FS}/documents/projects/${pid}/documents/${docId}?updateMask.fieldPaths=storagePath`, {
+    method: 'PATCH', headers: ADMIN,
+    body: JSON.stringify({ fields: { storagePath: enc(path) } }),
+  })
+
+  docCount++
+  console.log(`  📄 ${docName} v${prevVersion + 1} 업로드${diffAdded !== null ? ` (diff +${diffAdded} −${diffRemoved})` : ''}`)
+}
+
 // ===== 연동 이력(activity) 기록 — Phase 5 타임라인의 데이터 =====
 await fetch(`${FS}/documents/projects/${pid}/activity`, {
   method: 'POST', headers: ADMIN,
@@ -171,11 +244,12 @@ await fetch(`${FS}/documents/projects/${pid}/activity`, {
       by: enc('claude-code'),
       summary: enc(String(draft.summary ?? (action === 'register' ? '프로젝트 최초 등록' : '프로젝트 업데이트'))),
       sourcePath: enc(String(draft.sourcePath ?? '')),
+      docCount: enc(docCount),
       at: enc(now),
     },
   }),
 })
 
 console.log(`✔ ${action === 'register' ? '등록' : '업데이트'} 완료: ${draft.name}`)
-console.log(`  달성률 ${progress}% · 목표 ${goals.length}개`)
+console.log(`  달성률 ${progress}% · 목표 ${goals.length}개${docCount > 0 ? ` · 문서 ${docCount}건` : ''}`)
 console.log(`  대시보드: http://localhost:5173/projects/${pid}`)

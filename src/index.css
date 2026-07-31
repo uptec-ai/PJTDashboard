@@ -440,3 +440,17 @@ table.list select {
 .diff-del { background: var(--critical-soft); color: var(--critical); text-decoration: line-through; }
 .diff-same { color: var(--ink-2); }
 .pdf-frame { width: 100%; height: 60vh; border: 1px solid var(--grid); border-radius: 8px; }
+
+/* ===== 연동 이력 타임라인 ===== */
+.timeline { display: flex; flex-direction: column; }
+.tl-item {
+  display: flex; gap: 12px; padding: 12px 4px;
+  border-bottom: 1px solid var(--grid);
+}
+.tl-item:last-child { border-bottom: 0; }
+.tl-icon { flex: none; font-size: 16px; }
+.tl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.tl-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13.5px; }
+.tl-date { margin-left: auto; font-size: 12px; }
+.tl-summary { font-size: 13px; color: var(--ink-2); }
+.tl-path { font-size: 11.5px; word-break: break-all; }
