@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { FormEvent, KeyboardEvent } from 'react'
 import { addEquipment, updateEquipment } from '../lib/subitems'
 import type { CommType, EquipStatus, EquipmentRow, IoPort, IoPortType } from '../types'
 
@@ -29,6 +29,21 @@ export default function EquipmentFormModal({ pid, editing, onClose }: Props) {
       setIoPorts(editing.ioPorts)
     }
   }, [editing])
+
+  const portsRef = useRef<HTMLDivElement>(null)
+
+  /** IO 포트 표에서 Tab = 같은 열의 아래 행으로 (Shift+Tab = 위 행). 끝 행에서는 기본 이동 */
+  const handleTabNav = (e: KeyboardEvent, row: number, col: string) => {
+    if (e.key !== 'Tab') return
+    const nextRow = e.shiftKey ? row - 1 : row + 1
+    const target = portsRef.current?.querySelector<HTMLElement>(
+      `[data-row="${nextRow}"][data-col="${col}"]`,
+    )
+    if (target) {
+      e.preventDefault()
+      target.focus()
+    }
+  }
 
   const addPort = () =>
     setIoPorts([...ioPorts, { id: crypto.randomUUID(), port: '', type: 'DI', desc: '' }])
@@ -113,42 +128,53 @@ export default function EquipmentFormModal({ pid, editing, onClose }: Props) {
             <button type="button" className="btn btn-sm btn-ghost" onClick={addPort}>+ 포트 추가</button>
           </div>
           {ioPorts.length === 0 && <p className="hint muted">등록된 IO 포트가 없습니다.</p>}
-          {ioPorts.map((p) => (
-            <div key={p.id} className="goal-row">
-              <input
-                style={{ width: 72, flex: 'none' }}
-                value={p.port}
-                onChange={(e) => setPort(p.id, { port: e.target.value })}
-                placeholder="포트"
-              />
-              <select
-                className="io-type"
-                value={p.type}
-                onChange={(e) => setPort(p.id, { type: e.target.value as IoPortType })}
-              >
-                <option value="DI">DI</option>
-                <option value="DO">DO</option>
-                <option value="AI">AI</option>
-                <option value="AO">AO</option>
-                <option value="COMM">통신</option>
-                <option value="ETC">기타</option>
-              </select>
-              <input
-                style={{ flex: 1, minWidth: 0 }}
-                value={p.desc}
-                onChange={(e) => setPort(p.id, { desc: e.target.value })}
-                placeholder="용도 (예: 비상정지 입력)"
-              />
-              <button
-                type="button"
-                className="btn btn-sm btn-danger"
-                title="이 포트 삭제"
-                onClick={() => removePort(p.id)}
-              >
-                삭제
-              </button>
-            </div>
-          ))}
+          <div ref={portsRef} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {ioPorts.map((p, i) => (
+              <div key={p.id} className="goal-row">
+                <input
+                  style={{ width: 72, flex: 'none' }}
+                  data-row={i}
+                  data-col="port"
+                  value={p.port}
+                  onChange={(e) => setPort(p.id, { port: e.target.value })}
+                  onKeyDown={(e) => handleTabNav(e, i, 'port')}
+                  placeholder="포트"
+                />
+                <select
+                  className="io-type"
+                  data-row={i}
+                  data-col="type"
+                  value={p.type}
+                  onChange={(e) => setPort(p.id, { type: e.target.value as IoPortType })}
+                  onKeyDown={(e) => handleTabNav(e, i, 'type')}
+                >
+                  <option value="DI">DI</option>
+                  <option value="DO">DO</option>
+                  <option value="AI">AI</option>
+                  <option value="AO">AO</option>
+                  <option value="COMM">통신</option>
+                  <option value="ETC">기타</option>
+                </select>
+                <input
+                  style={{ flex: 1, minWidth: 0 }}
+                  data-row={i}
+                  data-col="desc"
+                  value={p.desc}
+                  onChange={(e) => setPort(p.id, { desc: e.target.value })}
+                  onKeyDown={(e) => handleTabNav(e, i, 'desc')}
+                  placeholder="용도 (예: 비상정지 입력)"
+                />
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger"
+                  title="이 포트 삭제"
+                  onClick={() => removePort(p.id)}
+                >
+                  삭제
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
 
         {error && <div className="msg msg-error">{error}</div>}
