@@ -116,7 +116,7 @@ export default function EquipmentFormModal({ pid, editing, onClose }: Props) {
           {ioPorts.map((p) => (
             <div key={p.id} className="goal-row">
               <input
-                style={{ width: 90, flex: 'none' }}
+                style={{ width: 72, flex: 'none' }}
                 value={p.port}
                 onChange={(e) => setPort(p.id, { port: e.target.value })}
                 placeholder="포트"

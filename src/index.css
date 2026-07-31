@@ -413,8 +413,8 @@ table.list select {
 .task-sub { font-size: 11.5px; }
 .task-actions { display: flex; gap: 5px; flex: none; }
 
-/* IO 포트 타입 select (장비 폼) */
-.io-type { width: 76px; flex: none; }
+/* IO 포트 타입 select (장비 폼) — 삭제 버튼이 모달 밖으로 밀리지 않게 좁게 유지 */
+.io-type { width: 60px; flex: none; padding: 9px 4px !important; }
 
 /* ===== FullCalendar 테마 연동 ===== */
 .calendar-wrap { display: flex; flex-direction: column; gap: 8px; }
