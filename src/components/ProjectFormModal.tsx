@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { computeProgress, createProject, updateProject } from '../lib/projects'
 import { useAuth } from '../contexts/AuthContext'
-import type { Goal, Priority, ProjectRow, ProjectStatus } from '../types'
+import type { Goal, GoalItem, Priority, ProjectRow, ProjectStatus } from '../types'
 
 interface Props {
   /** null이면 새 프로젝트, 값이 있으면 수정 */
@@ -49,12 +49,35 @@ export default function ProjectFormModal({ editing, onClose }: Props) {
   const progress = !progressManual && auto !== null ? auto : manualProgress
 
   const addGoal = () =>
-    setGoals([...goals, { id: crypto.randomUUID(), title: '', progress: 0, updatedBy: 'user' }])
+    setGoals([...goals, { id: crypto.randomUUID(), title: '', progress: 0, updatedBy: 'user', items: [] }])
 
   const setGoal = (id: string, patch: Partial<Goal>) =>
     setGoals(goals.map((g) => (g.id === id ? { ...g, ...patch, updatedBy: 'user' } : g)))
 
   const removeGoal = (id: string) => setGoals(goals.filter((g) => g.id !== id))
+
+  // 세부항목 편집
+  const addItem = (goalId: string) =>
+    setGoal(goalId, {
+      items: [
+        ...(goals.find((g) => g.id === goalId)?.items ?? []),
+        { id: crypto.randomUUID(), title: '', done: false },
+      ],
+    })
+
+  const setItem = (goalId: string, itemId: string, patch: Partial<GoalItem>) => {
+    const goal = goals.find((g) => g.id === goalId)
+    if (!goal) return
+    setGoal(goalId, {
+      items: (goal.items ?? []).map((it) => (it.id === itemId ? { ...it, ...patch } : it)),
+    })
+  }
+
+  const removeItem = (goalId: string, itemId: string) => {
+    const goal = goals.find((g) => g.id === goalId)
+    if (!goal) return
+    setGoal(goalId, { items: (goal.items ?? []).filter((it) => it.id !== itemId) })
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -71,7 +94,10 @@ export default function ProjectFormModal({ editing, onClose }: Props) {
       priority,
       dueDate,
       isPublic,
-      goals,
+      goals: goals.map((g) => ({
+        ...g,
+        items: (g.items ?? []).filter((it) => it.title.trim() !== ''),
+      })),
       progress,
       progressManual,
       workflowNote: workflowNote.trim(),
@@ -164,23 +190,49 @@ export default function ProjectFormModal({ editing, onClose }: Props) {
             </p>
           )}
           {goals.map((g) => (
-            <div key={g.id} className="goal-row">
-              <input
-                value={g.title}
-                onChange={(e) => setGoal(g.id, { title: e.target.value })}
-                placeholder="목표 내용"
-              />
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={g.progress}
-                onChange={(e) =>
-                  setGoal(g.id, { progress: Math.max(0, Math.min(100, Number(e.target.value))) })
-                }
-              />
-              <span className="muted">%</span>
-              <button type="button" className="btn btn-sm btn-ghost" onClick={() => removeGoal(g.id)}>✕</button>
+            <div key={g.id} className="goal-block">
+              <div className="goal-row">
+                <input
+                  value={g.title}
+                  onChange={(e) => setGoal(g.id, { title: e.target.value })}
+                  placeholder="목표 내용"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={g.progress}
+                  onChange={(e) =>
+                    setGoal(g.id, { progress: Math.max(0, Math.min(100, Number(e.target.value))) })
+                  }
+                />
+                <span className="muted">%</span>
+                <button type="button" className="btn btn-sm btn-ghost" onClick={() => removeGoal(g.id)}>✕</button>
+              </div>
+
+              {/* 세부항목 편집 */}
+              <div className="goal-items-edit">
+                {(g.items ?? []).map((it) => (
+                  <div key={it.id} className="goal-item-row">
+                    <label className="check" title={it.done ? '완료' : '미완료'}>
+                      <input
+                        type="checkbox"
+                        checked={it.done}
+                        onChange={(e) => setItem(g.id, it.id, { done: e.target.checked })}
+                      />
+                    </label>
+                    <input
+                      value={it.title}
+                      onChange={(e) => setItem(g.id, it.id, { title: e.target.value })}
+                      placeholder="세부항목"
+                    />
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => removeItem(g.id, it.id)}>✕</button>
+                  </div>
+                ))}
+                <button type="button" className="btn btn-sm btn-ghost gi-add" onClick={() => addItem(g.id)}>
+                  + 세부항목
+                </button>
+              </div>
             </div>
           ))}
         </div>

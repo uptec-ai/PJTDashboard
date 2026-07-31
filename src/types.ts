@@ -19,11 +19,18 @@ export const ROLE_LABEL: Record<Role, string> = {
 export type ProjectStatus = 'active' | 'hold' | 'done' | 'stopped'
 export type Priority = 'high' | 'mid' | 'low'
 
+export interface GoalItem {
+  id: string
+  title: string
+  done: boolean
+}
+
 export interface Goal {
   id: string
   title: string
   progress: number // 0~100
   updatedBy: 'ai' | 'user'
+  items?: GoalItem[] // 세부항목 체크리스트 (표시용 — 목표 %는 별도 관리)
 }
 
 export interface Project {

@@ -96,6 +96,16 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
                   <b>{g.progress}%</b>
                 </div>
                 <div className="bar"><i style={{ width: `${g.progress}%` }} /></div>
+                {(g.items?.length ?? 0) > 0 && (
+                  <ul className="goal-items">
+                    {g.items!.map((it) => (
+                      <li key={it.id} className={`gi ${it.done ? 'gi-done' : ''}`}>
+                        <span className="gi-mark">{it.done ? '✓' : '○'}</span>
+                        {it.title}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             ))}
           </div>

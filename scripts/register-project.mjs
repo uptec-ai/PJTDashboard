@@ -58,6 +58,12 @@ const goals = (draft.goals ?? []).map((g, i) => ({
   title: String(g.title),
   progress: Math.max(0, Math.min(100, Number(g.progress) || 0)),
   updatedBy: 'ai',
+  // 세부항목 체크리스트 (표시용)
+  items: (g.items ?? []).map((it, j) => ({
+    id: `i${Date.now()}${i}_${j}`,
+    title: String(it.title),
+    done: Boolean(it.done),
+  })),
 }))
 const progress =
   goals.length > 0
