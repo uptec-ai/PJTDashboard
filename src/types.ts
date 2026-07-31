@@ -175,3 +175,20 @@ export interface DocumentVersion {
 export interface DocumentVersionRow extends DocumentVersion {
   id: string
 }
+
+// ===== 부가효과 지표 (발전율·사용량 등 프로젝트 성과 지표) =====
+export interface MetricPoint {
+  month: string // 'YYYY-MM'
+  value: number
+}
+
+export interface Metric {
+  name: string // 예: 발전율, 월 사용량
+  unit: string // 예: %, kWh, 회
+  points: MetricPoint[] // 월별 값
+  createdAt?: unknown
+}
+
+export interface MetricRow extends Metric {
+  id: string
+}

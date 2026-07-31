@@ -176,6 +176,45 @@ if (existing) {
   })
 }
 
+// ===== 부가효과 지표 upsert — 같은 이름이면 값 갱신 =====
+for (const m of draft.metrics ?? []) {
+  if (!m.name?.trim()) continue
+  const metricName = m.name.trim()
+  const points = (m.points ?? [])
+    .filter((p) => /^\d{4}-\d{2}$/.test(String(p.month)))
+    .map((p) => ({ month: String(p.month), value: Number(p.value) || 0 }))
+    .sort((a, b) => a.month.localeCompare(b.month))
+
+  const found = (await (await fetch(`${FS}/documents/projects/${pid}:runQuery`, {
+    method: 'POST', headers: ADMIN,
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: 'metrics' }],
+        where: { fieldFilter: { field: { fieldPath: 'name' }, op: 'EQUAL', value: { stringValue: metricName } } },
+        limit: 1,
+      },
+    }),
+  })).json()).find((r) => r.document)?.document ?? null
+
+  const fields = {
+    name: enc(metricName),
+    unit: enc(String(m.unit ?? '')),
+    points: enc(points),
+  }
+  if (found) {
+    const mid = found.name.split('/').pop()
+    await fetch(`${FS}/documents/projects/${pid}/metrics/${mid}?updateMask.fieldPaths=name&updateMask.fieldPaths=unit&updateMask.fieldPaths=points`, {
+      method: 'PATCH', headers: ADMIN, body: JSON.stringify({ fields }),
+    })
+  } else {
+    await fetch(`${FS}/documents/projects/${pid}/metrics`, {
+      method: 'POST', headers: ADMIN,
+      body: JSON.stringify({ fields: { ...fields, createdAt: enc(now) } }),
+    })
+  }
+  console.log(`  📈 지표 "${metricName}" ${found ? '갱신' : '등록'} (${points.length}개 값)`)
+}
+
 // ===== 문서(AI 재작성본) 업로드 — 같은 이름이면 다음 버전 + 이전 버전과 diff =====
 let docCount = 0
 for (const d of draft.documents ?? []) {

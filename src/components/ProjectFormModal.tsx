@@ -175,7 +175,7 @@ export default function ProjectFormModal({ editing, onClose }: Props) {
 
         <label className="check">
           <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
-          게스트에게 공개 (외부에 지표 노출)
+          게스트에게 노출 (이름·개요·목표·지표만 보임 — 장비·일정·문서는 항상 회원 전용)
         </label>
 
         {/* ===== 목표 (마일스톤) ===== */}

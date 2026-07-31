@@ -103,15 +103,20 @@ export default function ProjectDetailPage() {
           </div>
         </div>
 
-        {/* ===== 탭 ===== */}
+        {/* ===== 탭 — 게스트는 개요(이름·목표·지표·시퀀스)만 열람 가능 ===== */}
         <div className="tabs">
           <button className={tab === 'overview' ? 'on' : ''} onClick={() => setTab('overview')}>개요</button>
-          <button className={tab === 'equipment' ? 'on' : ''} onClick={() => setTab('equipment')}>장비</button>
-          <button className={tab === 'tasks' ? 'on' : ''} onClick={() => setTab('tasks')}>
-            일정 · 이슈{(project.openIssueCount ?? 0) > 0 && <span className="tab-badge">{project.openIssueCount}</span>}
-          </button>
-          <button className={tab === 'docs' ? 'on' : ''} onClick={() => setTab('docs')}>문서</button>
-          <button className={tab === 'activity' ? 'on' : ''} onClick={() => setTab('activity')}>연동 이력</button>
+          {!isGuest && (
+            <>
+              <button className={tab === 'equipment' ? 'on' : ''} onClick={() => setTab('equipment')}>장비</button>
+              <button className={tab === 'tasks' ? 'on' : ''} onClick={() => setTab('tasks')}>
+                일정 · 이슈{(project.openIssueCount ?? 0) > 0 && <span className="tab-badge">{project.openIssueCount}</span>}
+              </button>
+              <button className={tab === 'docs' ? 'on' : ''} onClick={() => setTab('docs')}>문서</button>
+              <button className={tab === 'activity' ? 'on' : ''} onClick={() => setTab('activity')}>연동 이력</button>
+            </>
+          )}
+          {isGuest && <span className="guest-note muted">🔒 장비·일정·문서는 회원 전용입니다</span>}
         </div>
 
         {tab === 'overview' && (

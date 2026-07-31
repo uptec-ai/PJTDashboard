@@ -151,6 +151,22 @@ await expectAllowed('회원의 타 프로젝트 이슈 열람', () =>
 )
 await signOut(auth)
 
+console.log('— 게스트 고정 공개 정책 —')
+// A가 공개 프로젝트 생성 + 지표/장비 데이터 추가
+await signInWithEmailAndPassword(auth, email, 'Test1234!@#$')
+const pubRef = await addDoc(collection(db, 'projects'), projectData(user.user.uid, { isPublic: true }))
+created.push(pubRef.id)
+await addDoc(collection(db, 'projects', pubRef.id, 'metrics'), {
+  name: '규칙테스트지표', unit: '%', points: [{ month: '2026-07', value: 50 }], createdAt: serverTimestamp(),
+})
+await addDoc(collection(db, 'projects', pubRef.id, 'progressHistory'), {
+  date: serverTimestamp(), progress: 10,
+})
+await addDoc(collection(db, 'projects', pubRef.id, 'equipment'), {
+  name: '규칙테스트장비', ip: '10.0.0.1', commType: 'etc', commNote: '', status: 'ok', ioPorts: [], createdAt: serverTimestamp(),
+})
+await signOut(auth)
+
 // 게스트
 const anon2 = await signInAnonymously(auth)
 await setDoc(doc(db, 'users', anon2.user.uid), {
@@ -158,6 +174,18 @@ await setDoc(doc(db, 'users', anon2.user.uid), {
 })
 await expectDenied('게스트의 비공개 프로젝트 이슈 열람', () =>
   getDocs(collection(db, 'projects', pid, 'tasks')),
+)
+await expectAllowed('게스트의 공개 프로젝트 지표(metrics) 열람', () =>
+  getDocs(collection(db, 'projects', pubRef.id, 'metrics')),
+)
+await expectAllowed('게스트의 공개 프로젝트 달성률 추이 열람', () =>
+  getDocs(collection(db, 'projects', pubRef.id, 'progressHistory')),
+)
+await expectDenied('게스트의 공개 프로젝트 장비(IP) 열람', () =>
+  getDocs(collection(db, 'projects', pubRef.id, 'equipment')),
+)
+await expectDenied('게스트의 공개 프로젝트 문서 열람', () =>
+  getDocs(collection(db, 'projects', pubRef.id, 'documents')),
 )
 await signOut(auth)
 

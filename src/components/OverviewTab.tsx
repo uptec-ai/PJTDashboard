@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { collection, getDocs, onSnapshot, query } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { useAuth } from '../contexts/AuthContext'
 import ProgressChart from './ProgressChart'
 import ActivityHeatmap from './ActivityHeatmap'
 import MermaidDiagram from './MermaidDiagram'
+import MetricsSection from './MetricsSection'
 import type { ProjectRow } from '../types'
 
 interface HistoryPoint {
@@ -21,6 +23,8 @@ interface Props {
 }
 
 export default function OverviewTab({ project, canEdit, onEdit }: Props) {
+  const { user } = useAuth()
+  const isGuest = user?.isAnonymous ?? false
   const [history, setHistory] = useState<HistoryPoint[]>([])
   const [activityDates, setActivityDates] = useState<Date[]>([])
 
@@ -39,7 +43,9 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
   }, [project.id])
 
   // 주간 활동 집계 (탭 진입 시 1회): 일정/이슈·문서·연동이력·달성률 기록
+  // 게스트는 회원 전용 데이터에 접근할 수 없으므로 집계하지 않음 (히트맵 숨김)
   useEffect(() => {
+    if (isGuest) return
     let active = true
     const load = async () => {
       const dates: Date[] = []
@@ -50,8 +56,8 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
         { name: 'progressHistory', field: 'date' },
       ]
       for (const s of subs) {
-        const snap = await getDocs(collection(db, 'projects', project.id, s.name))
-        for (const d of snap.docs) {
+        const snap = await getDocs(collection(db, 'projects', project.id, s.name)).catch(() => null)
+        for (const d of snap?.docs ?? []) {
           const t = toDate(d.data()[s.field])
           if (t) dates.push(t)
         }
@@ -60,21 +66,26 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
     }
     load().catch(() => {})
     return () => { active = false }
-  }, [project.id])
+  }, [project.id, isGuest])
 
   return (
     <>
+      {/* 부가효과 지표 — 게스트에게도 공개되는 성과 지표 */}
+      <MetricsSection pid={project.id} canEdit={canEdit} />
+
       <div className="overview-grid">
         <section className="panel">
           <h3>달성률 추이</h3>
           <ProgressChart points={history} />
         </section>
 
-        <section className="panel">
-          <h3>주간 활동</h3>
-          <p className="ph muted">일정·이슈·문서·연동 기록 횟수 (최근 12주)</p>
-          <ActivityHeatmap dates={activityDates} />
-        </section>
+        {!isGuest && (
+          <section className="panel">
+            <h3>주간 활동</h3>
+            <p className="ph muted">일정·이슈·문서·연동 기록 횟수 (최근 12주)</p>
+            <ActivityHeatmap dates={activityDates} />
+          </section>
+        )}
       </div>
 
       <section className="panel">
