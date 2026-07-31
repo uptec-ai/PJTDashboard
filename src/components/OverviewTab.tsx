@@ -84,8 +84,16 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
 
           <section className="panel">
             <h3>주간 활동</h3>
-            <p className="ph muted">일정·이슈·문서·연동 기록 횟수 (최근 12주)</p>
-            <ActivityHeatmap dates={activityDates} />
+            <p className="ph muted">커밋·일정·이슈·문서·연동 기록 횟수 (최근 12주)</p>
+            <ActivityHeatmap
+              dates={[
+                ...activityDates,
+                // 원본 저장소의 커밋 활동 (등록 시 git 이력에서 수집)
+                ...(project.commitDays ?? []).flatMap((d) =>
+                  Array.from({ length: d.count }, () => new Date(`${d.date}T12:00:00`)),
+                ),
+              ]}
+            />
           </section>
         </div>
       )}

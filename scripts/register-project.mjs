@@ -135,6 +135,12 @@ const common = {
   sequenceMermaid: String(draft.sequenceMermaid ?? ''),
   updatedAt: now,
 }
+// 커밋 활동 달력 (git log 날짜별 커밋 수) — 제공된 경우에만 갱신
+if (Array.isArray(draft.commitActivity)) {
+  common.commitDays = draft.commitActivity
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d.date)))
+    .map((d) => ({ date: String(d.date), count: Math.max(1, Number(d.count) || 1) }))
+}
 
 let pid
 let action
@@ -174,6 +180,36 @@ if (existing) {
     method: 'POST', headers: ADMIN,
     body: JSON.stringify({ fields: { date: enc(now), progress: enc(progress) } }),
   })
+}
+
+// ===== 달성률 추이 소급(백필) — 과거 날짜 스냅샷 추가 (같은 날짜는 건너뜀) =====
+if (Array.isArray(draft.progressBackfill) && draft.progressBackfill.length > 0) {
+  const existingHist = await (await fetch(`${FS}/documents/projects/${pid}/progressHistory`, { headers: ADMIN })).json()
+  const existingDates = new Set(
+    (existingHist.documents ?? []).map((d) => {
+      const ts = d.fields?.date?.timestampValue
+      if (!ts) return ''
+      // KST(+9) 기준 날짜 문자열
+      return new Date(new Date(ts).getTime() + 9 * 3600 * 1000).toISOString().slice(0, 10)
+    }),
+  )
+  let added = 0
+  for (const p of draft.progressBackfill) {
+    const date = String(p.date)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || existingDates.has(date)) continue
+    const progressVal = Math.max(0, Math.min(100, Number(p.progress) || 0))
+    await fetch(`${FS}/documents/projects/${pid}/progressHistory`, {
+      method: 'POST', headers: ADMIN,
+      body: JSON.stringify({
+        fields: {
+          date: { timestampValue: `${date}T03:00:00Z` }, // KST 정오
+          progress: enc(progressVal),
+        },
+      }),
+    })
+    added++
+  }
+  if (added > 0) console.log(`  📉 달성률 추이 소급 ${added}개 시점 반영`)
 }
 
 // ===== 부가효과 지표 upsert — 같은 이름이면 값 갱신 =====
