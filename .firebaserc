@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-gcs-dashboard"
+    "default": "demo-gcs-dashboard",
+    "prod": "kongboard-f8d65"
   }
 }
