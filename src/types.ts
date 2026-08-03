@@ -169,6 +169,7 @@ export interface DocumentVersion {
   size: number // bytes
   source: DocSource // user=직접 업로드, ai=Claude 재작성본(Phase 5)
   isPublic?: boolean // 게스트 공개 여부 (기본 비공개 — 회원 전용)
+  fileModifiedAt?: number | null // PC에서 파일을 마지막 수정한 시각 (ms) — 업로드 시 보존
   textContent: string | null // md/txt 계열의 본문 (보기·diff용, 대용량이면 null)
   diffAdded: number | null // 이전 버전 대비 추가 줄 수
   diffRemoved: number | null // 이전 버전 대비 삭제 줄 수

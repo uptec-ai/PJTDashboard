@@ -69,6 +69,8 @@ export async function uploadDocument(
     size: file.size,
     source: 'user',
     isPublic,
+    // PC 파일 탐색기의 "수정한 날짜" 보존 (파일 수정일순 정렬 기준)
+    fileModifiedAt: Number.isFinite(file.lastModified) ? file.lastModified : null,
     textContent,
     diffAdded,
     diffRemoved,
@@ -102,6 +104,7 @@ export async function uploadDocument(
     size: file.size,
     source: 'user',
     isPublic,
+    fileModifiedAt: Number.isFinite(file.lastModified) ? file.lastModified : null,
     textContent,
     diffAdded,
     diffRemoved,

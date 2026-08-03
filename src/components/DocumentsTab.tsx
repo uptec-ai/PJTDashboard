@@ -48,14 +48,15 @@ export default function DocumentsTab({ pid, canEdit }: Props) {
 
     const firstCreated = (list: DocumentVersionRow[]) =>
       Math.min(...list.map((d) => toMillis(d.createdAt) || Number.MAX_SAFE_INTEGER))
-    const lastModified = (list: DocumentVersionRow[]) =>
-      Math.max(...list.map((d) => toMillis(d.createdAt)))
+    // PC 파일의 "수정한 날짜" 기준 (미보존 문서는 업로드 시점으로 대체)
+    const lastFileModified = (list: DocumentVersionRow[]) =>
+      Math.max(...list.map((d) => d.fileModifiedAt ?? toMillis(d.createdAt)))
 
     const entries = [...map.entries()]
     entries.sort((a, b) => {
       let cmp: number
       if (sortKey === 'name') cmp = a[0].localeCompare(b[0], 'ko')
-      else if (sortKey === 'modified') cmp = lastModified(a[1]) - lastModified(b[1])
+      else if (sortKey === 'modified') cmp = lastFileModified(a[1]) - lastFileModified(b[1])
       else cmp = firstCreated(a[1]) - firstCreated(b[1]) // 최초 등록 순
       return asc ? cmp : -cmp
     })
@@ -94,8 +95,8 @@ export default function DocumentsTab({ pid, canEdit }: Props) {
         <h3>문서 ({rows.length})</h3>
         <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <select className="sort" value={sortKey} onChange={(e) => setSortKey(e.target.value as DocSortKey)}>
-            <option value="created">정렬: 등록순</option>
-            <option value="modified">정렬: 수정 날짜순</option>
+            <option value="created">정렬: 등록순 (대시보드에 올린 순)</option>
+            <option value="modified">정렬: 파일 수정일순 (PC 수정 날짜)</option>
             <option value="name">정렬: 이름순</option>
           </select>
           <button
@@ -139,6 +140,11 @@ export default function DocumentsTab({ pid, canEdit }: Props) {
                   </span>
                 )}
                 <span className="muted d-size">{formatSize(r.size)}</span>
+                {r.fileModifiedAt != null && (
+                  <span className="muted d-size" title="PC에서 파일을 마지막 수정한 날짜">
+                    수정 {new Date(r.fileModifiedAt).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' })}
+                  </span>
+                )}
                 <span className="d-actions">
                   <button
                     className="btn btn-sm btn-ghost"
