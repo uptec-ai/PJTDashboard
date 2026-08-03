@@ -31,6 +31,7 @@ export function formatSize(bytes: number): string {
 /**
  * 문서 업로드 — 같은 이름의 기존 버전들이 있으면 다음 버전 번호를 부여하고,
  * 텍스트 문서면 이전 최신 버전과의 diff(추가/삭제 줄 수)를 함께 기록한다.
+ * 생성된 문서 행을 반환한다 (다중 업로드 시 배치 내 버전 계산에 사용).
  */
 export async function uploadDocument(
   pid: string,
@@ -38,7 +39,7 @@ export async function uploadDocument(
   file: File,
   existing: DocumentVersionRow[], // 해당 프로젝트의 전체 문서 버전 목록
   isPublic = false, // 게스트 공개 여부 (기본 비공개)
-) {
+): Promise<DocumentVersionRow> {
   const sameName = existing.filter((d) => d.name === name)
   const version = sameName.length === 0 ? 1 : Math.max(...sameName.map((d) => d.version)) + 1
   const prev = sameName.sort((x, y) => y.version - x.version)[0] ?? null
@@ -90,6 +91,21 @@ export async function uploadDocument(
   // 3) 경로 확정
   const { updateDoc } = await import('firebase/firestore')
   await updateDoc(doc(db, 'projects', pid, 'documents', metaRef.id), { storagePath })
+
+  return {
+    id: metaRef.id,
+    name,
+    version,
+    fileName: file.name,
+    storagePath,
+    contentType: file.type || 'application/octet-stream',
+    size: file.size,
+    source: 'user',
+    isPublic,
+    textContent,
+    diffAdded,
+    diffRemoved,
+  }
 }
 
 /** 문서 게스트 공개 토글 — Firestore 플래그 + Storage 메타데이터 동시 갱신 */
