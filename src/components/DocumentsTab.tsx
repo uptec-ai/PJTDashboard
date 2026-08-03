@@ -12,10 +12,17 @@ interface Props {
   canEdit: boolean
 }
 
+type DocSortKey = 'created' | 'modified' | 'name'
+
+const toMillis = (v: unknown): number =>
+  v && typeof v === 'object' && 'toMillis' in v ? (v as { toMillis: () => number }).toMillis() : 0
+
 export default function DocumentsTab({ pid, canEdit }: Props) {
   const { user } = useAuth()
   const isGuest = user?.isAnonymous ?? false
   const [rows, setRows] = useState<DocumentVersionRow[]>([])
+  const [sortKey, setSortKey] = useState<DocSortKey>('created')
+  const [asc, setAsc] = useState(true)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [viewing, setViewing] = useState<DocumentVersionRow | null>(null)
   const [busyId, setBusyId] = useState('')
@@ -29,7 +36,7 @@ export default function DocumentsTab({ pid, canEdit }: Props) {
     )
   }, [pid, isGuest])
 
-  // 문서 이름별 그룹, 각 그룹은 버전 내림차순
+  // 문서 이름별 그룹, 각 그룹은 버전 내림차순. 그룹 정렬: 등록순/수정일순/이름순 × 오름/내림
   const groups = useMemo(() => {
     const map = new Map<string, DocumentVersionRow[]>()
     for (const r of rows) {
@@ -38,8 +45,22 @@ export default function DocumentsTab({ pid, canEdit }: Props) {
       map.set(r.name, list)
     }
     for (const list of map.values()) list.sort((a, b) => b.version - a.version)
-    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-  }, [rows])
+
+    const firstCreated = (list: DocumentVersionRow[]) =>
+      Math.min(...list.map((d) => toMillis(d.createdAt) || Number.MAX_SAFE_INTEGER))
+    const lastModified = (list: DocumentVersionRow[]) =>
+      Math.max(...list.map((d) => toMillis(d.createdAt)))
+
+    const entries = [...map.entries()]
+    entries.sort((a, b) => {
+      let cmp: number
+      if (sortKey === 'name') cmp = a[0].localeCompare(b[0], 'ko')
+      else if (sortKey === 'modified') cmp = lastModified(a[1]) - lastModified(b[1])
+      else cmp = firstCreated(a[1]) - firstCreated(b[1]) // 최초 등록 순
+      return asc ? cmp : -cmp
+    })
+    return entries
+  }, [rows, sortKey, asc])
 
   const handleDownload = async (r: DocumentVersionRow) => {
     setBusyId(r.id)
@@ -71,7 +92,22 @@ export default function DocumentsTab({ pid, canEdit }: Props) {
     <section className="panel">
       <div className="row-between">
         <h3>문서 ({rows.length})</h3>
-        {canEdit && <button className="btn btn-sm btn-primary" onClick={() => setUploadOpen(true)}>+ 문서 업로드</button>}
+        <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select className="sort" value={sortKey} onChange={(e) => setSortKey(e.target.value as DocSortKey)}>
+            <option value="created">정렬: 등록순</option>
+            <option value="modified">정렬: 수정 날짜순</option>
+            <option value="name">정렬: 이름순</option>
+          </select>
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost"
+            title={asc ? '오름차순 (클릭하면 내림차순)' : '내림차순 (클릭하면 오름차순)'}
+            onClick={() => setAsc(!asc)}
+          >
+            {asc ? '▲ 오름차순' : '▼ 내림차순'}
+          </button>
+          {canEdit && <button className="btn btn-sm btn-primary" onClick={() => setUploadOpen(true)}>+ 문서 업로드</button>}
+        </span>
       </div>
 
       {groups.length === 0 ? (
