@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  browserLocalPersistence,
   browserSessionPersistence,
   setPersistence,
   signInAnonymously,
@@ -15,7 +14,6 @@ import { clearLoginFail, getLock, recordLoginFail, toEmail } from '../lib/valida
 export default function LoginPage() {
   const [id, setId] = useState('')
   const [pw, setPw] = useState('')
-  const [keep, setKeep] = useState(true)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const navigate = useNavigate()
@@ -34,8 +32,9 @@ export default function LoginPage() {
 
     setBusy(true)
     try {
-      // 로그인 유지: 체크 시 브라우저를 닫아도 유지, 해제 시 탭 닫으면 로그아웃
-      await setPersistence(auth, keep ? browserLocalPersistence : browserSessionPersistence)
+      // 기본은 세션 유지(브라우저 닫으면 로그아웃).
+      // 마스터로 확인되면 AuthContext가 영구 유지로 승격한다.
+      await setPersistence(auth, browserSessionPersistence)
       await signInWithEmailAndPassword(auth, email, pw)
       clearLoginFail(email)
       navigate('/')
@@ -55,6 +54,7 @@ export default function LoginPage() {
     setError('')
     setBusy(true)
     try {
+      await setPersistence(auth, browserSessionPersistence) // 게스트는 브라우저 닫으면 종료
       const cred = await signInAnonymously(auth)
       // 게스트 프로필 문서 생성 (최초 1회)
       const ref = doc(db, 'users', cred.user.uid)
@@ -106,12 +106,9 @@ export default function LoginPage() {
           />
         </div>
 
-        <div className="row-between">
-          <label className="check">
-            <input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} />
-            로그인 유지
-          </label>
-        </div>
+        <p className="hint muted" style={{ marginTop: -4 }}>
+          개인·게스트는 브라우저를 닫으면 자동 로그아웃됩니다. (마스터는 로그인 유지)
+        </p>
 
         {error && <div className="msg msg-error">{error}</div>}
 

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { onAuthStateChanged, signOut } from 'firebase/auth'
+import { browserLocalPersistence, onAuthStateChanged, setPersistence, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
@@ -43,8 +43,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unsubProfile = onSnapshot(
         doc(db, 'users', u.uid),
         (snap) => {
-          setProfile(snap.exists() ? (snap.data() as UserProfile) : null)
+          const p = snap.exists() ? (snap.data() as UserProfile) : null
+          setProfile(p)
           setLoading(false)
+          // 로그아웃 정책: 마스터만 브라우저를 닫아도 로그인 유지 (개인/게스트는 세션 종료 시 로그아웃)
+          if (p?.role === 'master') {
+            setPersistence(auth, browserLocalPersistence).catch(() => {})
+          }
         },
         () => {
           setProfile(null)
