@@ -168,6 +168,7 @@ export interface DocumentVersion {
   contentType: string
   size: number // bytes
   source: DocSource // user=직접 업로드, ai=Claude 재작성본(Phase 5)
+  isPublic?: boolean // 게스트 공개 여부 (기본 비공개 — 회원 전용)
   textContent: string | null // md/txt 계열의 본문 (보기·diff용, 대용량이면 null)
   diffAdded: number | null // 이전 버전 대비 추가 줄 수
   diffRemoved: number | null // 이전 버전 대비 삭제 줄 수
@@ -198,6 +199,20 @@ export interface UpdateEntry {
 }
 
 export interface UpdateEntryRow extends UpdateEntry {
+  id: string
+}
+
+// ===== 요청·코멘트 (게스트 포함 소통 창구) =====
+export interface Comment {
+  author: string // 표시 이름 (게스트는 직접 입력, 회원은 프로필 이름)
+  role: Role
+  text: string
+  authorUid: string
+  acked: boolean // 관리자(마스터/소유자)가 확인했는지
+  createdAt?: unknown
+}
+
+export interface CommentRow extends Comment {
   id: string
 }
 

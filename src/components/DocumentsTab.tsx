@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { collection, onSnapshot, query } from 'firebase/firestore'
+import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import { deleteDocumentVersion, downloadDocument, formatSize } from '../lib/documents'
+import { useAuth } from '../contexts/AuthContext'
+import { deleteDocumentVersion, downloadDocument, formatSize, setDocumentPublic } from '../lib/documents'
 import DocumentUploadModal from './DocumentUploadModal'
 import DocumentViewerModal from './DocumentViewerModal'
 import type { DocumentVersion, DocumentVersionRow } from '../types'
@@ -12,16 +13,21 @@ interface Props {
 }
 
 export default function DocumentsTab({ pid, canEdit }: Props) {
+  const { user } = useAuth()
+  const isGuest = user?.isAnonymous ?? false
   const [rows, setRows] = useState<DocumentVersionRow[]>([])
   const [uploadOpen, setUploadOpen] = useState(false)
   const [viewing, setViewing] = useState<DocumentVersionRow | null>(null)
   const [busyId, setBusyId] = useState('')
 
   useEffect(() => {
-    return onSnapshot(query(collection(db, 'projects', pid, 'documents')), (snap) =>
+    // 게스트는 공개 문서만 (보안 규칙과 일치하는 조건)
+    const base = collection(db, 'projects', pid, 'documents')
+    const q = isGuest ? query(base, where('isPublic', '==', true)) : query(base)
+    return onSnapshot(q, (snap) =>
       setRows(snap.docs.map((d) => ({ id: d.id, ...(d.data() as DocumentVersion) }))),
     )
-  }, [pid])
+  }, [pid, isGuest])
 
   // 문서 이름별 그룹, 각 그룹은 버전 내림차순
   const groups = useMemo(() => {
@@ -89,6 +95,7 @@ export default function DocumentsTab({ pid, canEdit }: Props) {
                 <span className={`by ${r.source === 'ai' ? 'by-ai' : 'by-user'}`}>
                   {r.source === 'ai' ? 'AI 재작성' : r.version === 1 ? '원본' : '사용자'}
                 </span>
+                {r.isPublic && <span className="chip chip-accent">🌐 게스트 공개</span>}
                 {r.diffAdded !== null && (
                   <span className="diff">
                     <span className="add">+{r.diffAdded}줄</span>{' '}
@@ -105,7 +112,16 @@ export default function DocumentsTab({ pid, canEdit }: Props) {
                     ⬇ 다운로드
                   </button>
                   {canEdit && (
-                    <button className="btn btn-sm btn-ghost" onClick={() => handleDelete(r)}>삭제</button>
+                    <>
+                      <button
+                        className="btn btn-sm btn-ghost"
+                        title={r.isPublic ? '게스트 공개 해제' : '게스트에게 공개'}
+                        onClick={() => setDocumentPublic(pid, r, !r.isPublic).catch(() => alert('변경 실패'))}
+                      >
+                        {r.isPublic ? '비공개로' : '공개로'}
+                      </button>
+                      <button className="btn btn-sm btn-ghost" onClick={() => handleDelete(r)}>삭제</button>
+                    </>
                   )}
                 </span>
               </div>

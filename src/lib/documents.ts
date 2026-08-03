@@ -5,7 +5,7 @@ import {
   doc,
   serverTimestamp,
 } from 'firebase/firestore'
-import { deleteObject, getBlob, ref, uploadBytes } from 'firebase/storage'
+import { deleteObject, getBlob, ref, updateMetadata, uploadBytes } from 'firebase/storage'
 import { db, storage } from './firebase'
 import { diffCounts, diffLines } from './diff'
 import type { DocumentVersionRow } from '../types'
@@ -37,6 +37,7 @@ export async function uploadDocument(
   name: string,
   file: File,
   existing: DocumentVersionRow[], // 해당 프로젝트의 전체 문서 버전 목록
+  isPublic = false, // 게스트 공개 여부 (기본 비공개)
 ) {
   const sameName = existing.filter((d) => d.name === name)
   const version = sameName.length === 0 ? 1 : Math.max(...sameName.map((d) => d.version)) + 1
@@ -66,6 +67,7 @@ export async function uploadDocument(
     contentType: file.type || 'application/octet-stream',
     size: file.size,
     source: 'user',
+    isPublic,
     textContent,
     diffAdded,
     diffRemoved,
@@ -77,6 +79,8 @@ export async function uploadDocument(
   try {
     await uploadBytes(ref(storage, storagePath), file, {
       contentType: file.type || 'application/octet-stream',
+      // Storage 보안 규칙이 게스트 다운로드 허용 판단에 사용
+      customMetadata: { public: String(isPublic) },
     })
   } catch (e) {
     await deleteDoc(metaRef) // 업로드 실패 시 메타 정리
@@ -86,6 +90,17 @@ export async function uploadDocument(
   // 3) 경로 확정
   const { updateDoc } = await import('firebase/firestore')
   await updateDoc(doc(db, 'projects', pid, 'documents', metaRef.id), { storagePath })
+}
+
+/** 문서 게스트 공개 토글 — Firestore 플래그 + Storage 메타데이터 동시 갱신 */
+export async function setDocumentPublic(pid: string, row: DocumentVersionRow, isPublic: boolean) {
+  const { updateDoc: upd } = await import('firebase/firestore')
+  await upd(doc(db, 'projects', pid, 'documents', row.id), { isPublic })
+  if (row.storagePath) {
+    await updateMetadata(ref(storage, row.storagePath), {
+      customMetadata: { public: String(isPublic) },
+    }).catch(() => {})
+  }
 }
 
 export async function deleteDocumentVersion(pid: string, row: DocumentVersionRow) {

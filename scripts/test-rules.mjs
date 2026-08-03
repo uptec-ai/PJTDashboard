@@ -187,6 +187,28 @@ await expectDenied('게스트의 공개 프로젝트 장비(IP) 열람', () =>
 await expectDenied('게스트의 공개 프로젝트 문서 열람', () =>
   getDocs(collection(db, 'projects', pubRef.id, 'documents')),
 )
+await expectAllowed('게스트의 공개 문서만 조회 (isPublic 필터)', () =>
+  getDocs(query(collection(db, 'projects', pubRef.id, 'documents'), where('isPublic', '==', true))),
+)
+await expectAllowed('게스트의 공개 프로젝트 업데이트 이력 열람', () =>
+  getDocs(collection(db, 'projects', pubRef.id, 'updates')),
+)
+await expectAllowed('게스트의 공개 프로젝트 코멘트 작성', () =>
+  addDoc(collection(db, 'projects', pubRef.id, 'comments'), {
+    author: '게스트', role: 'guest', text: '목표에 항목 추가 요청드립니다',
+    authorUid: anon2.user.uid, acked: false, createdAt: serverTimestamp(),
+  }),
+)
+await expectDenied('게스트의 비공개 프로젝트 코멘트 작성', () =>
+  addDoc(collection(db, 'projects', pid, 'comments'), {
+    author: '게스트', role: 'guest', text: 'x',
+    authorUid: anon2.user.uid, acked: false, createdAt: serverTimestamp(),
+  }),
+)
+await expectDenied('게스트의 코멘트 확인함 처리 (관리자 전용)', async () => {
+  const list = await getDocs(collection(db, 'projects', pubRef.id, 'comments'))
+  await updateDoc(list.docs[0].ref, { acked: true })
+})
 await signOut(auth)
 
 // ===== 테스트 데이터 정리 (에뮬레이터 관리자 권한) =====

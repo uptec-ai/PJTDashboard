@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext'
 import ProgressChart from './ProgressChart'
 import MermaidDiagram from './MermaidDiagram'
 import MetricsSection from './MetricsSection'
+import CommentsSection from './CommentsSection'
 import type { ProjectRow } from '../types'
 
 interface HistoryPoint {
@@ -255,6 +256,9 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
           </>
         )}
       </section>
+
+      {/* 5행: 요청·코멘트 (게스트 포함 소통 창구) */}
+      <CommentsSection pid={project.id} canManage={canEdit} />
     </>
   )
 }

@@ -12,6 +12,7 @@ interface Props {
 export default function DocumentUploadModal({ pid, existing, onClose }: Props) {
   const [name, setName] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [isPublic, setIsPublic] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -43,7 +44,7 @@ export default function DocumentUploadModal({ pid, existing, onClose }: Props) {
 
     setBusy(true)
     try {
-      await uploadDocument(pid, name.trim(), file, existing)
+      await uploadDocument(pid, name.trim(), file, existing, isPublic)
       onClose()
     } catch {
       setError('업로드에 실패했습니다. 잠시 후 다시 시도하세요.')
@@ -92,6 +93,11 @@ export default function DocumentUploadModal({ pid, existing, onClose }: Props) {
               : '같은 이름으로 다시 올리면 자동으로 다음 버전(v2, v3…)이 됩니다.'}
           </span>
         </div>
+
+        <label className="check">
+          <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
+          게스트 공개 — 게스트도 이 문서를 조회·다운로드 가능 (제품 사양서 등 제공용 문서만 권장)
+        </label>
 
         {error && <div className="msg msg-error">{error}</div>}
 
