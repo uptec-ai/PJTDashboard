@@ -24,7 +24,10 @@ export const storage = getStorage(app)
 auth.languageCode = 'ko'
 
 if (useEmulators) {
-  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
-  connectFirestoreEmulator(db, '127.0.0.1', 8080)
-  connectStorageEmulator(storage, '127.0.0.1', 9199)
+  // 같은 wifi의 다른 PC에서 접속해도 동작하도록, 브라우저 주소창의 호스트를 그대로 사용
+  // (localhost로 열면 localhost, 192.168.x.x로 열면 그 IP의 에뮬레이터로 연결)
+  const emuHost = window.location.hostname || '127.0.0.1'
+  connectAuthEmulator(auth, `http://${emuHost}:9099`, { disableWarnings: true })
+  connectFirestoreEmulator(db, emuHost, 8080)
+  connectStorageEmulator(storage, emuHost, 9199)
 }

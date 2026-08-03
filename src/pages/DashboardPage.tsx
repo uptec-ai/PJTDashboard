@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import TopBar from '../components/TopBar'
 import ProjectCard from '../components/ProjectCard'
 import ProjectFormModal from '../components/ProjectFormModal'
-import { daysLeft, sortProjects } from '../lib/projects'
+import { daysLeft, saveCardOrder, sortProjects } from '../lib/projects'
 import type { SortKey } from '../lib/projects'
 import { STATUS_LABEL } from '../types'
 import type { Project, ProjectRow, ProjectStatus } from '../types'
@@ -21,7 +21,16 @@ export default function DashboardPage() {
   const [rows, setRows] = useState<ProjectRow[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('all')
-  const [sortKey, setSortKey] = useState<SortKey>('latest')
+  const [sortKey, setSortKeyState] = useState<SortKey>(
+    () => (localStorage.getItem('dash-sort') as SortKey) || 'latest',
+  )
+  const setSortKey = (k: SortKey) => {
+    setSortKeyState(k)
+    localStorage.setItem('dash-sort', k)
+  }
+  // 드래그 재배치 (마스터 전용 — 전체 카드 순서는 공용 데이터)
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<ProjectRow | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -75,6 +84,26 @@ export default function DashboardPage() {
   }, [rows, filter, sortKey])
 
   const canEdit = (p: ProjectRow) => !isGuest && (isMaster || p.ownerUid === user?.uid)
+  const canReorder = isMaster // 전체 카드 순서 변경은 마스터만
+
+  /** 드롭: 끌던 카드를 대상 카드 앞에 끼워 넣고 순서 저장 → 커스텀 정렬로 전환 */
+  const handleDrop = async (targetId: string) => {
+    if (!dragId || dragId === targetId) { setDragId(null); setOverId(null); return }
+    const ids = visible.map((p) => p.id)
+    const from = ids.indexOf(dragId)
+    const to = ids.indexOf(targetId)
+    if (from < 0 || to < 0) return
+    ids.splice(from, 1)
+    ids.splice(to, 0, dragId)
+    setDragId(null)
+    setOverId(null)
+    try {
+      await saveCardOrder(ids)
+      setSortKey('custom')
+    } catch {
+      alert('순서 저장에 실패했습니다.')
+    }
+  }
 
   const openNew = () => {
     setEditing(null)
@@ -139,7 +168,13 @@ export default function DashboardPage() {
             <option value="latest">정렬: 최신순</option>
             <option value="due">정렬: 마감일순</option>
             <option value="priority">정렬: 중요도순</option>
+            <option value="custom">정렬: 커스텀 (드래그 순서)</option>
           </select>
+          {canReorder && (
+            <span className="muted" style={{ fontSize: 11.5 }}>
+              카드를 끌어 다른 카드 위에 놓으면 순서가 바뀝니다
+            </span>
+          )}
         </div>
 
         {/* ===== 카드 그리드 ===== */}
@@ -156,7 +191,18 @@ export default function DashboardPage() {
         ) : (
           <div className="cards">
             {visible.map((p) => (
-              <ProjectCard key={p.id} project={p} canEdit={canEdit(p)} onEdit={openEdit} />
+              <div
+                key={p.id}
+                className={`card-wrap ${dragId === p.id ? 'dragging' : ''} ${overId === p.id && dragId !== p.id ? 'drag-over' : ''}`}
+                draggable={canReorder}
+                onDragStart={() => setDragId(p.id)}
+                onDragEnd={() => { setDragId(null); setOverId(null) }}
+                onDragOver={(e) => { e.preventDefault(); setOverId(p.id) }}
+                onDragLeave={() => setOverId((cur) => (cur === p.id ? null : cur))}
+                onDrop={(e) => { e.preventDefault(); handleDrop(p.id) }}
+              >
+                <ProjectCard project={p} canEdit={canEdit(p)} onEdit={openEdit} />
+              </div>
             ))}
           </div>
         )}

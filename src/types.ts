@@ -45,6 +45,7 @@ export interface Project {
   progress: number // 전체 달성률(%) — 목표 평균 또는 직접 입력
   progressManual: boolean // true면 직접 입력값 유지 (목표 평균으로 덮어쓰지 않음)
   openIssueCount?: number // 미해결 이슈 수 (이슈 생성/해결 시 자동 유지)
+  sortOrder?: number // 커스텀 정렬 순서 (카드 드래그 재배치)
   workflowNote?: string // 프로젝트 동작 설명 (등록 시 Claude가 채움, 수정 가능)
   sequenceMermaid?: string // 시퀀스 다이어그램 (Mermaid 코드)
   commitDays?: { date: string; count: number; messages?: string[] }[] // 날짜별 커밋 수+메시지 (활동 캘린더용)

@@ -5,6 +5,7 @@ import {
   doc,
   serverTimestamp,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type { Goal, Project, ProjectRow } from '../types'
@@ -57,6 +58,15 @@ export async function deleteProject(id: string) {
   await deleteDoc(doc(db, 'projects', id))
 }
 
+/** 카드 드래그 재배치 순서 저장 — updatedAt은 건드리지 않음 (최신순 정렬 왜곡 방지) */
+export async function saveCardOrder(orderedIds: string[]) {
+  const batch = writeBatch(db)
+  orderedIds.forEach((id, i) => {
+    batch.update(doc(db, 'projects', id), { sortOrder: i * 10 })
+  })
+  await batch.commit()
+}
+
 /** D-day 계산: 양수=남음, 0=오늘, 음수=지남, null=마감일 없음 */
 export function daysLeft(dueDate: string): number | null {
   if (!dueDate) return null
@@ -73,8 +83,8 @@ export function ddayLabel(dueDate: string): string {
   return d > 0 ? `D-${d}` : `D+${-d}`
 }
 
-/** 정렬: 최신순 / 마감일순 / 중요도순 */
-export type SortKey = 'latest' | 'due' | 'priority'
+/** 정렬: 최신순 / 마감일순 / 중요도순 / 커스텀(드래그 순서) */
+export type SortKey = 'latest' | 'due' | 'priority' | 'custom'
 
 const PRIORITY_ORDER = { high: 0, mid: 1, low: 2 } as const
 
@@ -82,6 +92,13 @@ export function sortProjects(rows: ProjectRow[], key: SortKey): ProjectRow[] {
   const sorted = [...rows]
   if (key === 'latest') {
     sorted.sort((a, b) => toMillis(b.updatedAt) - toMillis(a.updatedAt))
+  } else if (key === 'custom') {
+    // 드래그로 정한 순서 (미지정 프로젝트는 뒤로, 그 안에서는 등록순)
+    sorted.sort((a, b) => {
+      const ao = a.sortOrder ?? Number.MAX_SAFE_INTEGER
+      const bo = b.sortOrder ?? Number.MAX_SAFE_INTEGER
+      return ao !== bo ? ao - bo : toMillis(a.createdAt) - toMillis(b.createdAt)
+    })
   } else if (key === 'due') {
     // 마감일 없는 프로젝트는 뒤로
     sorted.sort((a, b) => {
