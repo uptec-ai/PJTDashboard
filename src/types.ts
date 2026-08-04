@@ -49,6 +49,7 @@ export interface Project {
   workflowNote?: string // 프로젝트 동작 설명 (등록 시 Claude가 채움, 수정 가능)
   sequenceMermaid?: string // 시퀀스 다이어그램 (Mermaid 코드)
   commitDays?: { date: string; count: number; messages?: string[] }[] // 날짜별 커밋 수+메시지 (활동 캘린더용)
+  dbDesign?: DbDesign // DB 테이블 설계 (회원 전용 탭)
   ownerUid: string
   createdAt?: unknown
   updatedAt?: unknown
@@ -200,6 +201,50 @@ export interface UpdateEntry {
 }
 
 export interface UpdateEntryRow extends UpdateEntry {
+  id: string
+}
+
+// ===== DB 테이블 설계 (프로젝트의 데이터베이스 구조 문서화) =====
+export interface DbColumn {
+  name: string
+  type: string
+  desc?: string
+}
+
+export interface DbTable {
+  name: string
+  summary: string // 테이블 기능 한 줄 요약
+  columns: DbColumn[]
+}
+
+export interface DbDesign {
+  dbName: string // 예: DB_RLC (PostgreSQL)
+  note?: string // 설계 원칙·보존 정책 등
+  tables: DbTable[]
+}
+
+// ===== 내 공간: 개인 일정 (비공개 — 본인만) =====
+export interface PersonalEvent {
+  title: string
+  startDate: string // YYYY-MM-DD
+  endDate: string // YYYY-MM-DD ('' = 하루)
+  memo: string
+  createdAt?: unknown
+}
+
+export interface PersonalEventRow extends PersonalEvent {
+  id: string
+}
+
+// ===== 내 공간: Study 노트 (비공개 — 본인만) =====
+export interface StudyNote {
+  title: string
+  content: string
+  createdAt?: unknown
+  updatedAt?: unknown
+}
+
+export interface StudyNoteRow extends StudyNote {
   id: string
 }
 

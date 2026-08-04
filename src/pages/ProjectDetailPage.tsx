@@ -8,13 +8,14 @@ import OverviewTab from '../components/OverviewTab'
 import EquipmentTab from '../components/EquipmentTab'
 import TasksTab from '../components/TasksTab'
 import DocumentsTab from '../components/DocumentsTab'
+import DbDesignTab from '../components/DbDesignTab'
 import UpdatesTab from '../components/UpdatesTab'
 import ProjectFormModal from '../components/ProjectFormModal'
 import { ddayLabel } from '../lib/projects'
 import { STATUS_LABEL } from '../types'
 import type { Project, ProjectRow } from '../types'
 
-type Tab = 'overview' | 'equipment' | 'tasks' | 'docs' | 'activity'
+type Tab = 'overview' | 'equipment' | 'tasks' | 'docs' | 'db' | 'activity'
 
 const STATUS_CLASS: Record<string, string> = {
   active: 'pill-run',
@@ -112,6 +113,7 @@ export default function ProjectDetailPage() {
               <button className={tab === 'tasks' ? 'on' : ''} onClick={() => setTab('tasks')}>
                 일정 · 이슈{(project.openIssueCount ?? 0) > 0 && <span className="tab-badge">{project.openIssueCount}</span>}
               </button>
+              <button className={tab === 'db' ? 'on' : ''} onClick={() => setTab('db')}>DB 설계</button>
             </>
           )}
           <button className={tab === 'docs' ? 'on' : ''} onClick={() => setTab('docs')}>문서</button>
@@ -126,6 +128,7 @@ export default function ProjectDetailPage() {
         {tab === 'equipment' && <EquipmentTab pid={project.id} canEdit={canEdit} />}
         {tab === 'tasks' && <TasksTab pid={project.id} canEdit={canEdit} />}
         {tab === 'docs' && <DocumentsTab pid={project.id} canEdit={canEdit} />}
+        {tab === 'db' && !isGuest && <DbDesignTab project={project} />}
         {tab === 'activity' && <UpdatesTab pid={project.id} />}
       </main>
 

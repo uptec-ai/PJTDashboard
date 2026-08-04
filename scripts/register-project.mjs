@@ -226,20 +226,54 @@ if (Array.isArray(draft.commitActivity)) {
       messages: (d.messages ?? []).slice(0, 30).map((m) => String(m).slice(0, 200)),
     }))
 }
+// DB 테이블 설계 — 제공된 경우에만 갱신
+if (draft.dbDesign && Array.isArray(draft.dbDesign.tables)) {
+  common.dbDesign = {
+    dbName: String(draft.dbDesign.dbName ?? ''),
+    note: String(draft.dbDesign.note ?? ''),
+    tables: draft.dbDesign.tables.map((t) => ({
+      name: String(t.name),
+      summary: String(t.summary ?? ''),
+      columns: (t.columns ?? []).map((c) => ({
+        name: String(c.name),
+        type: String(c.type ?? ''),
+        desc: String(c.desc ?? ''),
+      })),
+    })),
+  }
+}
+
+// 업데이트 시 부분 반영: 초안에 명시된 항목만 덮어쓴다 (빈 값으로 기존 데이터가 지워지는 것 방지)
+const PARTIAL_KEYS = {
+  client: 'client', description: 'description', status: 'status', priority: 'priority',
+  dueDate: 'dueDate', isPublic: 'isPublic', workflowNote: 'workflowNote',
+  sequenceMermaid: 'sequenceMermaid', commitActivity: 'commitDays', dbDesign: 'dbDesign',
+}
+function updateFieldsOf(commonObj) {
+  const keys = new Set(['name', 'updatedAt'])
+  for (const [draftKey, commonKey] of Object.entries(PARTIAL_KEYS)) {
+    if (draft[draftKey] !== undefined) keys.add(commonKey)
+  }
+  if (draft.goals !== undefined || draft.progress !== undefined) {
+    keys.add('goals'); keys.add('progress'); keys.add('progressManual')
+  }
+  return Object.fromEntries(Object.entries(commonObj).filter(([k]) => keys.has(k)))
+}
 
 let pid
 let action
 if (existing) {
   pid = existing.name.split('/').pop()
   const prevProgress = dec(existing.fields.progress)
-  const mask = Object.keys(common).map((f) => `updateMask.fieldPaths=${f}`).join('&')
+  const partial = updateFieldsOf(common)
+  const mask = Object.keys(partial).map((f) => `updateMask.fieldPaths=${f}`).join('&')
   const r = await fetch(`${FS}/documents/projects/${pid}?${mask}`, {
     method: 'PATCH', headers: HDR,
-    body: JSON.stringify({ fields: Object.fromEntries(Object.entries(common).map(([k, v]) => [k, enc(v)])) }),
+    body: JSON.stringify({ fields: Object.fromEntries(Object.entries(partial).map(([k, v]) => [k, enc(v)])) }),
   })
   if (!r.ok) { console.error('✖ 업데이트 실패:', await r.text()); process.exit(1) }
   action = 'update'
-  if (prevProgress !== progress) {
+  if ((draft.goals !== undefined || draft.progress !== undefined) && prevProgress !== progress) {
     await fetch(`${FS}/documents/projects/${pid}/progressHistory`, {
       method: 'POST', headers: HDR,
       body: JSON.stringify({ fields: { date: enc(now), progress: enc(progress) } }),

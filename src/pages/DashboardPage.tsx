@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { collection, onSnapshot, query, where } from 'firebase/firestore'
+import { Link, useSearchParams } from 'react-router-dom'
+import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
 import TopBar from '../components/TopBar'
@@ -9,7 +9,7 @@ import ProjectFormModal from '../components/ProjectFormModal'
 import { daysLeft, saveCardOrder, sortProjects } from '../lib/projects'
 import type { SortKey } from '../lib/projects'
 import { STATUS_LABEL } from '../types'
-import type { Project, ProjectRow, ProjectStatus } from '../types'
+import type { PersonalEvent, Project, ProjectRow, ProjectStatus, StudyNote } from '../types'
 
 type Filter = 'all' | ProjectStatus
 
@@ -31,6 +31,9 @@ export default function DashboardPage() {
   // 드래그 재배치 (마스터 전용 — 전체 카드 순서는 공용 데이터)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
+  // 내 공간 미리보기 (개인 일정·Study — 비공개)
+  const [upcoming, setUpcoming] = useState<{ title: string; startDate: string }[]>([])
+  const [recentNotes, setRecentNotes] = useState<{ title: string; when: string }[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<ProjectRow | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -43,6 +46,38 @@ export default function DashboardPage() {
       setSearchParams({}, { replace: true })
     }
   }, [searchParams, isGuest, setSearchParams])
+
+  // 내 공간 미리보기 로드 (홈 진입 시 1회)
+  useEffect(() => {
+    if (!user || isGuest) return
+    let active = true
+    const load = async () => {
+      const today = new Date().toISOString().slice(0, 10)
+      const ev = await getDocs(collection(db, 'users', user.uid, 'events')).catch(() => null)
+      const up = (ev?.docs ?? [])
+        .map((d) => d.data() as PersonalEvent)
+        .filter((e) => (e.endDate || e.startDate) >= today)
+        .sort((a, b) => a.startDate.localeCompare(b.startDate))
+        .slice(0, 3)
+        .map((e) => ({ title: e.title, startDate: e.startDate }))
+      const nt = await getDocs(collection(db, 'users', user.uid, 'notes')).catch(() => null)
+      const toMs = (v: unknown) =>
+        v && typeof v === 'object' && 'toMillis' in v ? (v as { toMillis: () => number }).toMillis() : 0
+      const recent = (nt?.docs ?? [])
+        .map((d) => d.data() as StudyNote)
+        .sort((a, b) => toMs(b.updatedAt) - toMs(a.updatedAt))
+        .slice(0, 3)
+        .map((n) => ({
+          title: n.title || '제목 없음',
+          when: n.updatedAt && typeof n.updatedAt === 'object' && 'toDate' in n.updatedAt
+            ? (n.updatedAt as { toDate: () => Date }).toDate().toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })
+            : '',
+        }))
+      if (active) { setUpcoming(up); setRecentNotes(recent) }
+    }
+    load()
+    return () => { active = false }
+  }, [user, isGuest])
 
   useEffect(() => {
     if (!user) return
@@ -205,6 +240,48 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
+        )}
+        {/* ===== 내 공간 — 프로젝트 영역과 분리된 개인(비공개) 구역 ===== */}
+        {!isGuest && (
+          <>
+            <div className="myspace-divider">
+              <span>내 공간</span>
+              <span className="chip chip-mute">🔒 비공개 — 내 계정에서만 보임</span>
+            </div>
+            <div className="overview-grid">
+              <section className="panel myspace-card">
+                <div className="row-between">
+                  <h3>📆 개인 일정</h3>
+                  <Link to="/my/calendar" className="btn btn-sm btn-ghost">캘린더 열기 →</Link>
+                </div>
+                {upcoming.length === 0 ? (
+                  <p className="muted myspace-empty">다가오는 일정이 없습니다.</p>
+                ) : (
+                  <ul className="myspace-list">
+                    {upcoming.map((e, i) => (
+                      <li key={i}><span className="mono muted">{e.startDate.slice(5)}</span> {e.title}</li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section className="panel myspace-card">
+                <div className="row-between">
+                  <h3>📚 Study</h3>
+                  <Link to="/my/study" className="btn btn-sm btn-ghost">Study 열기 →</Link>
+                </div>
+                {recentNotes.length === 0 ? (
+                  <p className="muted myspace-empty">노트가 없습니다. 공부 내용을 기록해 보세요.</p>
+                ) : (
+                  <ul className="myspace-list">
+                    {recentNotes.map((n, i) => (
+                      <li key={i}><span className="mono muted">{n.when}</span> {n.title}</li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
+          </>
         )}
       </main>
 

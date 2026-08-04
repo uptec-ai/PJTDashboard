@@ -43,6 +43,14 @@ service cloud.firestore {
 
       // 탈퇴: 본인 또는 마스터
       allow delete: if (signedIn() && request.auth.uid == uid) || isMaster();
+
+      // ---------- 내 공간 (완전 비공개 — 본인만, 마스터도 열람 불가) ----------
+      match /events/{eid} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
+      match /notes/{nid} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
     }
 
     // ---------- 아이디 → 이메일 매핑 (아이디+비밀번호 로그인용) ----------

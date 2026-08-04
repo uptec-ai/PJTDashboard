@@ -10,6 +10,8 @@ import DashboardPage from './pages/DashboardPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
 import AccountPage from './pages/AccountPage'
 import AdminUsersPage from './pages/AdminUsersPage'
+import MyCalendarPage from './pages/MyCalendarPage'
+import MyStudyPage from './pages/MyStudyPage'
 
 export default function App() {
   return (
@@ -37,6 +39,22 @@ export default function App() {
             element={
               <RequireAuth>
                 <ProjectDetailPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/my/calendar"
+            element={
+              <RequireAuth noGuest>
+                <MyCalendarPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/my/study"
+            element={
+              <RequireAuth noGuest>
+                <MyStudyPage />
               </RequireAuth>
             }
           />

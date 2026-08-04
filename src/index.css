@@ -416,6 +416,54 @@ table.list select {
 .upload-item { display: flex; flex-direction: column; gap: 3px; }
 .upload-file { font-size: 11.5px; padding-left: 2px; word-break: break-all; }
 
+/* ===== DB 설계 탭 ===== */
+.db-head { display: flex; align-items: baseline; gap: 10px; }
+.db-note { font-size: 12.5px; }
+.db-table-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.mono-title { font-family: Consolas, monospace; font-size: 14.5px; color: var(--accent); }
+.db-summary { font-size: 12.5px; color: var(--ink-2); }
+.db-cols td { font-size: 12.5px; padding: 6px 10px; }
+.db-cols td:first-child { font-weight: 600; }
+
+/* ===== 내 공간 (홈 하단 분리 구역) ===== */
+.myspace-divider {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 26px; padding-top: 22px;
+  border-top: 2px solid var(--grid);
+  font-size: 16px; font-weight: 800;
+}
+.myspace-card { min-height: 130px; }
+.myspace-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.myspace-list li { font-size: 13.5px; color: var(--ink-2); display: flex; gap: 8px; align-items: baseline; }
+.myspace-empty { font-size: 13px; }
+
+/* ===== Study 페이지 ===== */
+.study-grid { display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: start; }
+@media (max-width: 760px) { .study-grid { grid-template-columns: 1fr; } }
+.study-list { gap: 4px; max-height: 70vh; overflow-y: auto; }
+.study-item {
+  display: flex; flex-direction: column; gap: 2px; text-align: left;
+  background: transparent; border: 0; border-radius: 8px;
+  padding: 9px 10px; cursor: pointer; font-family: inherit;
+}
+.study-item:hover { background: var(--accent-soft); }
+.study-item.on { background: var(--accent-soft); outline: 1px solid var(--accent); }
+.study-title { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.study-date { font-size: 11px; }
+.study-title-input {
+  flex: 1; min-width: 0; border: 0; border-bottom: 1px solid var(--grid);
+  padding: 6px 2px; font-size: 17px; font-weight: 700; font-family: inherit;
+  background: transparent; color: var(--ink);
+}
+.study-title-input:focus { outline: none; border-bottom-color: var(--accent); }
+.study-content {
+  width: 100%; min-height: 55vh; resize: vertical;
+  border: 1px solid var(--grid); border-radius: 8px;
+  padding: 14px; font-size: 14px; line-height: 1.7; font-family: inherit;
+  background: var(--plane); color: var(--ink);
+}
+.study-content:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
 /* 지표 단일 패널 내 지표 블록 */
 .metric-block { display: flex; flex-direction: column; gap: 8px; }
 .metric-block-sep { border-top: 1px solid var(--grid); padding-top: 12px; }

@@ -211,18 +211,37 @@ await expectDenied('게스트의 코멘트 확인함 처리 (관리자 전용)',
 })
 await signOut(auth)
 
+console.log('— 내 공간(개인 일정·Study) 규칙 — 완전 비공개')
+await signInWithEmailAndPassword(auth, email, 'Test1234!@#$')
+await expectAllowed('본인 일정 작성', () =>
+  addDoc(collection(db, 'users', user.user.uid, 'events'), {
+    title: '테스트 일정', startDate: '2026-08-04', endDate: '', memo: '', createdAt: serverTimestamp(),
+  }),
+)
+await signOut(auth)
+await signInWithEmailAndPassword(auth, emailB, 'Test1234!@#$')
+await expectDenied('다른 회원의 개인 일정 열람', () =>
+  getDocs(collection(db, 'users', user.user.uid, 'events')),
+)
+await signOut(auth)
+const anon3 = await signInAnonymously(auth)
+await expectDenied('게스트의 개인 일정 열람', () =>
+  getDocs(collection(db, 'users', user.user.uid, 'events')),
+)
+await signOut(auth)
+
 // ===== 테스트 데이터 정리 (에뮬레이터 관리자 권한) =====
 const ADMIN = { Authorization: 'Bearer owner' }
 for (const id of created) {
   await fetch(`http://127.0.0.1:8080/v1/projects/demo-gcs-dashboard/databases/(default)/documents/projects/${id}`, { method: 'DELETE', headers: ADMIN })
 }
-for (const uid of [anon.user.uid, user.user.uid, userB.user.uid, anon2.user.uid]) {
+for (const uid of [anon.user.uid, user.user.uid, userB.user.uid, anon2.user.uid, anon3.user.uid]) {
   await fetch(`http://127.0.0.1:8080/v1/projects/demo-gcs-dashboard/databases/(default)/documents/users/${uid}`, { method: 'DELETE', headers: ADMIN })
 }
 await fetch('http://127.0.0.1:9099/emulator/v1/projects/demo-gcs-dashboard/accounts:delete', {
   method: 'POST',
   headers: { ...ADMIN, 'Content-Type': 'application/json' },
-  body: JSON.stringify({ localIds: [anon.user.uid, user.user.uid, userB.user.uid, anon2.user.uid] }),
+  body: JSON.stringify({ localIds: [anon.user.uid, user.user.uid, userB.user.uid, anon2.user.uid, anon3.user.uid] }),
 }).catch(() => {})
 
 console.log(`\n결과: ${pass}개 통과, ${fail}개 실패`)
