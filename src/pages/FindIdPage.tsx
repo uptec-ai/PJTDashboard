@@ -23,7 +23,8 @@ export default function FindIdPage() {
     try {
       const snap = await getDoc(doc(db, 'emailLookup', normalizePhone(phone)))
       if (snap.exists()) {
-        setResult(snap.data().maskedEmail as string)
+        const d = snap.data()
+        setResult(d.username ? `${d.username} (이메일: ${d.maskedEmail})` : (d.maskedEmail as string))
       } else {
         setError('해당 휴대폰 번호로 가입된 계정이 없습니다.')
       }
@@ -54,7 +55,7 @@ export default function FindIdPage() {
         {result && (
           <div className="msg msg-ok">
             가입된 아이디: <b>{result}</b>
-            <br />(보안을 위해 일부만 표시됩니다)
+            <br />(이메일은 보안을 위해 일부만 표시됩니다)
           </div>
         )}
         {error && <div className="msg msg-error">{error}</div>}

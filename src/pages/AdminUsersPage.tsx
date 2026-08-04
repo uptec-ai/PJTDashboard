@@ -61,7 +61,7 @@ export default function AdminUsersPage() {
             <table className="list">
               <thead>
                 <tr>
-                  <th>이름</th>
+                  <th>아이디</th>
                   <th>이메일</th>
                   <th>휴대폰</th>
                   <th>등급</th>

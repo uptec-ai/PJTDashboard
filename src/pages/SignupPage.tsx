@@ -10,9 +10,15 @@ import {
   validatePassword,
   validatePhone,
 } from '../lib/validators'
+import {
+  isUsernameTaken,
+  normalizeUsername,
+  reserveUsername,
+  validateUsername,
+} from '../lib/usernames'
 
 export default function SignupPage() {
-  const [name, setName] = useState('')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [pw, setPw] = useState('')
@@ -25,15 +31,25 @@ export default function SignupPage() {
     e.preventDefault()
     setError('')
 
+    const idError = validateUsername(username)
+    if (idError) return setError(idError)
     const pwError = validatePassword(pw)
     if (pwError) return setError(pwError)
     if (pw !== pw2) return setError('비밀번호가 서로 일치하지 않습니다.')
     const phoneError = validatePhone(phone)
     if (phoneError) return setError(phoneError)
 
+    const uname = normalizeUsername(username)
     const digits = normalizePhone(phone)
     setBusy(true)
     try {
+      // 아이디 중복 확인
+      if (await isUsernameTaken(uname)) {
+        setError('이미 사용 중인 아이디입니다.')
+        setBusy(false)
+        return
+      }
+
       // 휴대폰 번호 중복 확인 (ID 찾기 데이터 기준)
       const lookupRef = doc(db, 'emailLookup', digits)
       const dup = await getDoc(lookupRef)
@@ -44,20 +60,23 @@ export default function SignupPage() {
       }
 
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), pw)
-      await updateProfile(cred.user, { displayName: name.trim() })
+      await updateProfile(cred.user, { displayName: uname })
 
-      // 프로필 문서 (기본 등급: 개인)
+      // 아이디 → 이메일 매핑 (아이디 로그인용)
+      await reserveUsername(uname, email.trim(), cred.user.uid)
+
+      // 프로필 문서 (기본 등급: 개인, name = 아이디)
       await setDoc(doc(db, 'users', cred.user.uid), {
         role: 'personal',
-        name: name.trim(),
+        name: uname,
         email: email.trim(),
         phone: digits,
         disabled: false,
         createdAt: serverTimestamp(),
       })
 
-      // ID 찾기용: 휴대폰 번호 → 마스킹된 이메일 (원본 이메일은 저장하지 않음)
-      await setDoc(lookupRef, { maskedEmail: maskEmail(email.trim()) })
+      // ID 찾기용: 휴대폰 번호 → 아이디 + 마스킹된 이메일
+      await setDoc(lookupRef, { maskedEmail: maskEmail(email.trim()), username: uname })
 
       await sendEmailVerification(cred.user)
       navigate('/verify-email')
@@ -78,11 +97,18 @@ export default function SignupPage() {
         <div className="sub">가입 후 이메일 인증을 완료해야 이용할 수 있습니다.</div>
 
         <div className="field">
-          <label htmlFor="su-name">이름</label>
-          <input id="su-name" value={name} onChange={(e) => setName(e.target.value)} required />
+          <label htmlFor="su-id">아이디 (로그인에 사용)</label>
+          <input
+            id="su-id"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="영문 소문자·숫자 3~20자"
+            autoComplete="username"
+            required
+          />
         </div>
         <div className="field">
-          <label htmlFor="su-email">이메일 (아이디로 사용)</label>
+          <label htmlFor="su-email">이메일</label>
           <input
             id="su-email"
             type="email"
@@ -91,6 +117,7 @@ export default function SignupPage() {
             autoComplete="email"
             required
           />
+          <span className="hint">가입 인증 메일과 비밀번호 찾기에 사용됩니다.</span>
         </div>
         <div className="field">
           <label htmlFor="su-phone">휴대폰 번호</label>

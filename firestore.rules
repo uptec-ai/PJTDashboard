@@ -45,7 +45,20 @@ service cloud.firestore {
       allow delete: if (signedIn() && request.auth.uid == uid) || isMaster();
     }
 
-    // ---------- ID 찾기: 휴대폰 번호 → 마스킹된 이메일 ----------
+    // ---------- 아이디 → 이메일 매핑 (아이디+비밀번호 로그인용) ----------
+    // 개별 조회만 허용 (목록 열람 불가), 아이디는 선점 후 변경 불가
+    match /usernames/{uname} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email is string
+        && uname.matches('^[a-z0-9_-]{3,20}$');
+      allow update: if false;
+      allow delete: if signedIn() && (resource.data.uid == request.auth.uid || isMaster());
+    }
+
+    // ---------- ID 찾기: 휴대폰 번호 → 아이디 + 마스킹된 이메일 ----------
     // 마스킹된 이메일만 저장하므로 공개 읽기 허용
     match /emailLookup/{phone} {
       allow get: if true;

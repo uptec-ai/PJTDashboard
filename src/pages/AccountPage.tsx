@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth'
 import { deleteDoc, doc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { releaseUsername } from '../lib/usernames'
 import { useAuth } from '../contexts/AuthContext'
 import TopBar from '../components/TopBar'
 import { ROLE_LABEL } from '../types'
@@ -68,7 +69,10 @@ export default function AccountPage() {
     setBusy(true)
     try {
       await reauth(delPw)
-      // 프로필/ID찾기 문서 정리 후 계정 삭제
+      // 프로필/아이디 매핑/ID찾기 문서 정리 후 계정 삭제
+      if (profile?.name) {
+        await releaseUsername(profile.name)
+      }
       if (profile?.phone) {
         await deleteDoc(doc(db, 'emailLookup', profile.phone)).catch(() => {})
       }
@@ -96,8 +100,8 @@ export default function AccountPage() {
           <div className="table-wrap">
             <table className="list">
               <tbody>
-                <tr><td>이름</td><td>{profile?.name}</td></tr>
-                <tr><td>아이디 (이메일)</td><td>{profile?.email}</td></tr>
+                <tr><td>아이디</td><td>{profile?.name}</td></tr>
+                <tr><td>이메일</td><td>{profile?.email}</td></tr>
                 <tr><td>휴대폰</td><td>{profile ? formatPhone(profile.phone) : ''}</td></tr>
                 <tr><td>등급</td><td>{profile ? ROLE_LABEL[profile.role] : ''}</td></tr>
               </tbody>

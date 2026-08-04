@@ -9,7 +9,8 @@ import {
 } from 'firebase/auth'
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
-import { clearLoginFail, getLock, recordLoginFail, toEmail } from '../lib/validators'
+import { clearLoginFail, getLock, recordLoginFail } from '../lib/validators'
+import { resolveLoginEmail } from '../lib/usernames'
 
 export default function LoginPage() {
   const [id, setId] = useState('')
@@ -21,7 +22,8 @@ export default function LoginPage() {
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
-    const email = toEmail(id)
+    // 아이디 → 이메일 해석 (이메일을 직접 입력해도 동작)
+    const email = await resolveLoginEmail(id)
 
     // 5회 실패 잠금 확인
     const lock = getLock(email)
@@ -84,12 +86,12 @@ export default function LoginPage() {
         <div className="sub">개인 프로젝트 관리 대시보드</div>
 
         <div className="field">
-          <label htmlFor="login-id">아이디 (이메일)</label>
+          <label htmlFor="login-id">아이디</label>
           <input
             id="login-id"
             value={id}
             onChange={(e) => setId(e.target.value)}
-            placeholder="이메일 또는 kingkong"
+            placeholder="아이디 (이메일도 가능)"
             autoComplete="username"
             required
           />
