@@ -2,14 +2,9 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from 'firebase/auth'
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
-import {
-  maskEmail,
-  normalizePhone,
-  validatePassword,
-  validatePhone,
-} from '../lib/validators'
+import { validatePassword } from '../lib/validators'
 import {
   isUsernameTaken,
   normalizeUsername,
@@ -20,7 +15,6 @@ import {
 export default function SignupPage() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
   const [pw, setPw] = useState('')
   const [pw2, setPw2] = useState('')
   const [error, setError] = useState('')
@@ -36,25 +30,13 @@ export default function SignupPage() {
     const pwError = validatePassword(pw)
     if (pwError) return setError(pwError)
     if (pw !== pw2) return setError('비밀번호가 서로 일치하지 않습니다.')
-    const phoneError = validatePhone(phone)
-    if (phoneError) return setError(phoneError)
 
     const uname = normalizeUsername(username)
-    const digits = normalizePhone(phone)
     setBusy(true)
     try {
       // 아이디 중복 확인
       if (await isUsernameTaken(uname)) {
         setError('이미 사용 중인 아이디입니다.')
-        setBusy(false)
-        return
-      }
-
-      // 휴대폰 번호 중복 확인 (ID 찾기 데이터 기준)
-      const lookupRef = doc(db, 'emailLookup', digits)
-      const dup = await getDoc(lookupRef)
-      if (dup.exists()) {
-        setError('이미 가입에 사용된 휴대폰 번호입니다.')
         setBusy(false)
         return
       }
@@ -70,13 +52,12 @@ export default function SignupPage() {
         role: 'personal',
         name: uname,
         email: email.trim(),
-        phone: digits,
         disabled: false,
         createdAt: serverTimestamp(),
       })
 
-      // ID 찾기용: 휴대폰 번호 → 아이디 + 마스킹된 이메일
-      await setDoc(lookupRef, { maskedEmail: maskEmail(email.trim()), username: uname })
+      // ID 찾기용: 이메일 → 아이디
+      await setDoc(doc(db, 'emailLookup', email.trim().toLowerCase()), { username: uname })
 
       await sendEmailVerification(cred.user)
       navigate('/verify-email')
@@ -118,18 +99,6 @@ export default function SignupPage() {
             required
           />
           <span className="hint">가입 인증 메일과 비밀번호 찾기에 사용됩니다.</span>
-        </div>
-        <div className="field">
-          <label htmlFor="su-phone">휴대폰 번호</label>
-          <input
-            id="su-phone"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="010-1234-5678"
-            autoComplete="tel"
-            required
-          />
-          <span className="hint">ID 찾기에 사용됩니다. (SMS 인증은 없음)</span>
         </div>
         <div className="field">
           <label htmlFor="su-pw">비밀번호</label>

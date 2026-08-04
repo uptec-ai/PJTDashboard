@@ -2,9 +2,9 @@ export type Role = 'master' | 'personal' | 'guest'
 
 export interface UserProfile {
   role: Role
-  name: string
+  name: string // 아이디
   email: string
-  phone: string
+  phone?: string // (구버전 호환 — 신규 가입은 저장하지 않음)
   disabled?: boolean
   createdAt?: unknown
 }

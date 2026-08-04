@@ -66,7 +66,6 @@ export default function LoginPage() {
           role: 'guest',
           name: '게스트',
           email: '',
-          phone: '',
           disabled: false,
           createdAt: serverTimestamp(),
         })

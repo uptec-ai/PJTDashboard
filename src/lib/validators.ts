@@ -15,27 +15,6 @@ export function validatePassword(pw: string): string | null {
   return null
 }
 
-/** 휴대폰 번호: 숫자만 남긴다 (010-1234-5678 → 01012345678) */
-export function normalizePhone(phone: string): string {
-  return phone.replace(/\D/g, '')
-}
-
-export function validatePhone(phone: string): string | null {
-  const digits = normalizePhone(phone)
-  if (!/^01[016789]\d{7,8}$/.test(digits)) return '올바른 휴대폰 번호가 아닙니다. (예: 010-1234-5678)'
-  return null
-}
-
-/** ID 찾기 결과용 이메일 마스킹: kingkong@dashboard.local → ki******@da******.local */
-export function maskEmail(email: string): string {
-  const [local, domain] = email.split('@')
-  const maskPart = (s: string) =>
-    s.length <= 2 ? s[0] + '*' : s.slice(0, 2) + '*'.repeat(Math.max(s.length - 2, 1))
-  const domainParts = domain.split('.')
-  const maskedDomain = [maskPart(domainParts[0]), ...domainParts.slice(1)].join('.')
-  return `${maskPart(local)}@${maskedDomain}`
-}
-
 /** 로그인 실패 잠금: 5회 실패 시 10분 잠금 (브라우저 저장) */
 const LOCK_MAX = 5
 const LOCK_MS = 10 * 60 * 1000

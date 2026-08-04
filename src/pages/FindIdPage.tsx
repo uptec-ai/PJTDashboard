@@ -3,10 +3,9 @@ import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import { normalizePhone, validatePhone } from '../lib/validators'
 
 export default function FindIdPage() {
-  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -16,17 +15,13 @@ export default function FindIdPage() {
     setResult('')
     setError('')
 
-    const phoneError = validatePhone(phone)
-    if (phoneError) return setError(phoneError)
-
     setBusy(true)
     try {
-      const snap = await getDoc(doc(db, 'emailLookup', normalizePhone(phone)))
+      const snap = await getDoc(doc(db, 'emailLookup', email.trim().toLowerCase()))
       if (snap.exists()) {
-        const d = snap.data()
-        setResult(d.username ? `${d.username} (이메일: ${d.maskedEmail})` : (d.maskedEmail as string))
+        setResult(snap.data().username as string)
       } else {
-        setError('해당 휴대폰 번호로 가입된 계정이 없습니다.')
+        setError('해당 이메일로 가입된 계정이 없습니다.')
       }
     } catch {
       setError('조회에 실패했습니다. 잠시 후 다시 시도하세요.')
@@ -39,15 +34,16 @@ export default function FindIdPage() {
     <div className="center-page">
       <form className="auth-card" onSubmit={handleFind}>
         <h2>ID 찾기</h2>
-        <div className="sub">가입 시 등록한 휴대폰 번호로 아이디(이메일)를 찾습니다.</div>
+        <div className="sub">가입 시 등록한 이메일로 아이디를 찾습니다.</div>
 
         <div className="field">
-          <label htmlFor="fi-phone">휴대폰 번호</label>
+          <label htmlFor="fi-email">이메일</label>
           <input
-            id="fi-phone"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="010-1234-5678"
+            id="fi-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
             required
           />
         </div>
@@ -55,7 +51,6 @@ export default function FindIdPage() {
         {result && (
           <div className="msg msg-ok">
             가입된 아이디: <b>{result}</b>
-            <br />(이메일은 보안을 위해 일부만 표시됩니다)
           </div>
         )}
         {error && <div className="msg msg-error">{error}</div>}

@@ -97,6 +97,17 @@ async function main() {
   if (!res.ok) throw new Error(`프로필 문서 생성 실패: ${await res.text()}`)
   console.log('✔ 마스터 프로필(role: master) 저장')
 
+  // 아이디 로그인 매핑 + ID 찾기 매핑
+  await fetch(`${FIRESTORE}/v1/projects/${PROJECT}/databases/(default)/documents/usernames/kingkong?updateMask.fieldPaths=email&updateMask.fieldPaths=uid`, {
+    method: 'PATCH', headers: ADMIN,
+    body: JSON.stringify({ fields: { email: { stringValue: EMAIL }, uid: { stringValue: uid } } }),
+  })
+  await fetch(`${FIRESTORE}/v1/projects/${PROJECT}/databases/(default)/documents/emailLookup/${encodeURIComponent(EMAIL)}?updateMask.fieldPaths=username`, {
+    method: 'PATCH', headers: ADMIN,
+    body: JSON.stringify({ fields: { username: { stringValue: NAME } } }),
+  })
+  console.log('✔ 아이디 매핑(usernames/kingkong) + ID 찾기 매핑 저장')
+
   console.log('\n완료! 로그인 화면에서 아이디에 "kingkong"만 입력해도 됩니다.')
 }
 

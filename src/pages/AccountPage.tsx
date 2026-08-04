@@ -73,8 +73,8 @@ export default function AccountPage() {
       if (profile?.name) {
         await releaseUsername(profile.name)
       }
-      if (profile?.phone) {
-        await deleteDoc(doc(db, 'emailLookup', profile.phone)).catch(() => {})
+      if (profile?.email) {
+        await deleteDoc(doc(db, 'emailLookup', profile.email.toLowerCase())).catch(() => {})
       }
       await deleteDoc(doc(db, 'users', user.uid)).catch(() => {})
       await deleteUser(user)
@@ -86,8 +86,6 @@ export default function AccountPage() {
     }
   }
 
-  const formatPhone = (p: string) =>
-    p.length === 11 ? `${p.slice(0, 3)}-${p.slice(3, 7)}-${p.slice(7)}` : p
 
   return (
     <>
@@ -102,7 +100,6 @@ export default function AccountPage() {
               <tbody>
                 <tr><td>아이디</td><td>{profile?.name}</td></tr>
                 <tr><td>이메일</td><td>{profile?.email}</td></tr>
-                <tr><td>휴대폰</td><td>{profile ? formatPhone(profile.phone) : ''}</td></tr>
                 <tr><td>등급</td><td>{profile ? ROLE_LABEL[profile.role] : ''}</td></tr>
               </tbody>
             </table>

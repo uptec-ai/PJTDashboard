@@ -42,8 +42,6 @@ export default function AdminUsersPage() {
     }
   }
 
-  const formatPhone = (p: string) =>
-    p.length === 11 ? `${p.slice(0, 3)}-${p.slice(3, 7)}-${p.slice(7)}` : p || '—'
 
   return (
     <>
@@ -63,7 +61,6 @@ export default function AdminUsersPage() {
                 <tr>
                   <th>아이디</th>
                   <th>이메일</th>
-                  <th>휴대폰</th>
                   <th>등급</th>
                   <th>상태</th>
                   <th></th>
@@ -76,7 +73,6 @@ export default function AdminUsersPage() {
                     <tr key={r.uid}>
                       <td>{r.name || '—'}</td>
                       <td>{r.email || '(게스트)'}</td>
-                      <td>{formatPhone(r.phone)}</td>
                       <td>
                         {isSelf ? (
                           ROLE_LABEL[r.role]
