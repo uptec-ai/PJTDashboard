@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { computeProgress, createProject, updateProject } from '../lib/projects'
 import { useAuth } from '../contexts/AuthContext'
-import type { Goal, GoalItem, Priority, ProjectRow, ProjectStatus } from '../types'
+import type { Goal, GoalItem, Priority, ProjectCategory, ProjectRow, ProjectStatus } from '../types'
 
 interface Props {
   /** null이면 새 프로젝트, 값이 있으면 수정 */
@@ -13,6 +13,7 @@ interface Props {
 export default function ProjectFormModal({ editing, onClose }: Props) {
   const { user } = useAuth()
   const [name, setName] = useState('')
+  const [category, setCategory] = useState<ProjectCategory>('company')
   const [client, setClient] = useState('')
   const [description, setDescription] = useState('')
   const [status, setStatus] = useState<ProjectStatus>('active')
@@ -30,6 +31,7 @@ export default function ProjectFormModal({ editing, onClose }: Props) {
   useEffect(() => {
     if (editing) {
       setName(editing.name)
+      setCategory(editing.category ?? 'company')
       setClient(editing.client)
       setDescription(editing.description)
       setStatus(editing.status)
@@ -88,6 +90,7 @@ export default function ProjectFormModal({ editing, onClose }: Props) {
 
     const data = {
       name: name.trim(),
+      category,
       client: client.trim(),
       description: description.trim(),
       status,
@@ -129,14 +132,21 @@ export default function ProjectFormModal({ editing, onClose }: Props) {
             <input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div className="field">
-            <label htmlFor="pf-client">거래처 (협업 업체)</label>
-            <input
-              id="pf-client"
-              value={client}
-              onChange={(e) => setClient(e.target.value)}
-              placeholder="비워두면 개인 프로젝트"
-            />
+            <label htmlFor="pf-category">카테고리</label>
+            <select id="pf-category" value={category} onChange={(e) => setCategory(e.target.value as ProjectCategory)}>
+              <option value="company">🏢 회사</option>
+              <option value="personal">👤 개인</option>
+            </select>
           </div>
+        </div>
+        <div className="field">
+          <label htmlFor="pf-client">거래처 (협업 업체)</label>
+          <input
+            id="pf-client"
+            value={client}
+            onChange={(e) => setClient(e.target.value)}
+            placeholder="없으면 비워두세요"
+          />
         </div>
 
         <div className="field">

@@ -61,7 +61,8 @@ export default function ProjectCard({ project: p, canEdit, onEdit }: Props) {
       </div>
 
       <div className={`client ${p.client ? '' : 'none'}`}>
-        🏢 {p.client || '개인 프로젝트'}
+        {(p.category ?? 'company') === 'personal' ? '👤 개인' : '🏢 회사'}
+        {p.client && <> · {p.client}</>}
       </div>
 
       {p.description && <div className="desc">{p.description}</div>}

@@ -40,6 +40,22 @@ export default function RequireAuth({ children, roles, noGuest }: Props) {
     return <Navigate to="/verify-email" replace />
   }
 
+  // 비회원(가입 완료, 마스터 승인 대기) — 승인 전까지 이용 불가
+  if (profile?.role === 'pending') {
+    return (
+      <div className="center-page">
+        <div className="auth-card">
+          <h2>승인 대기 중입니다</h2>
+          <p className="sub">
+            가입과 이메일 인증이 완료되었습니다.
+            <br />마스터가 회원 승인을 하면 대시보드를 이용할 수 있습니다.
+          </p>
+          <button className="btn btn-ghost" onClick={logout}>로그아웃</button>
+        </div>
+      </div>
+    )
+  }
+
   if (noGuest && user.isAnonymous) {
     return <Navigate to="/" replace />
   }

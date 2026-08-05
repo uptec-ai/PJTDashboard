@@ -23,19 +23,25 @@ service cloud.firestore {
       return request.auth.token.firebase.sign_in_provider == 'anonymous';
     }
 
+    // 회원 = 마스터 또는 승인된 회원(personal). 비회원(pending)·게스트는 제외
+    function isMember() {
+      return signedIn() && !isAnonymous()
+        && profile().role in ['personal', 'master'];
+    }
+
     // ---------- 회원 ----------
     match /users/{uid} {
       // 본인 또는 마스터만 열람. 회원 관리 목록 조회는 마스터만.
       allow get: if signedIn() && (request.auth.uid == uid || isMaster());
       allow list: if isMaster();
 
-      // 가입 시 본인 문서 생성: 익명은 guest, 일반 가입은 personal만 허용
+      // 가입 시 본인 문서 생성: 익명은 guest, 일반 가입은 pending(비회원 — 마스터 승인 대기)
       allow create: if signedIn() && request.auth.uid == uid
         && ((isAnonymous() && request.resource.data.role == 'guest')
-            || (!isAnonymous() && request.resource.data.role == 'personal'))
+            || (!isAnonymous() && request.resource.data.role == 'pending'))
         && request.resource.data.get('disabled', false) == false;
 
-      // 본인 수정: 역할/비활성화 필드는 변경 불가. 마스터: 전체 수정 가능
+      // 본인 수정: 역할/비활성화 필드는 변경 불가. 마스터: 전체 수정 가능 (승인 = role pending→personal)
       allow update: if (signedIn() && request.auth.uid == uid
                         && request.resource.data.role == resource.data.role
                         && request.resource.data.get('disabled', false) == resource.data.get('disabled', false))
@@ -54,7 +60,6 @@ service cloud.firestore {
     }
 
     // ---------- 아이디 → 이메일 매핑 (아이디+비밀번호 로그인용) ----------
-    // 개별 조회만 허용 (목록 열람 불가), 아이디는 선점 후 변경 불가
     match /usernames/{uname} {
       allow get: if true;
       allow list: if false;
@@ -66,9 +71,8 @@ service cloud.firestore {
       allow delete: if signedIn() && (resource.data.uid == request.auth.uid || isMaster());
     }
 
-    // ---------- ID 찾기: 휴대폰 번호 → 아이디 + 마스킹된 이메일 ----------
-    // 마스킹된 이메일만 저장하므로 공개 읽기 허용
-    match /emailLookup/{phone} {
+    // ---------- ID 찾기: 이메일 → 아이디 ----------
+    match /emailLookup/{email} {
       allow get: if true;
       allow list: if false;
       allow create: if signedIn();
@@ -76,25 +80,21 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // ---------- 프로젝트 (Phase 2에서 화면 구현, 규칙 선반영) ----------
+    // ---------- 프로젝트 ----------
+    // 권한: 마스터/회원 = 전체 열람·본인 것 작성, 비회원(pending) = 접근 불가,
+    //       게스트(익명) = 공개 프로젝트의 공개 정보만
     match /projects/{pid} {
-      // 게스트는 공개 프로젝트만, 회원은 전체 열람
       allow read: if notDisabled()
-        && (!isAnonymous() || resource.data.get('isPublic', false) == true || isMaster());
+        && (isMember() || (isAnonymous() && resource.data.get('isPublic', false) == true));
 
-      allow create: if notDisabled() && !isAnonymous()
+      allow create: if notDisabled() && isMember()
         && request.resource.data.ownerUid == request.auth.uid;
 
       allow update, delete: if notDisabled()
-        && (resource.data.ownerUid == request.auth.uid || isMaster());
+        && ((isMember() && resource.data.ownerUid == request.auth.uid) || isMaster());
 
       // 하위 컬렉션 — 정확히 한 단계만.
       // 주의: {sub=**}는 규칙 v2에서 빈 경로도 매칭되어 프로젝트 문서 자체가 뚫리므로 사용 금지
-      //
-      // 게스트 고정 공개 정책 (공개 프로젝트 한정):
-      //   게스트 열람 = metrics(지표)·updates(업데이트 이력)·comments(코멘트)·documents 중 isPublic 문서
-      //   게스트 작성 = comments (요청·코멘트)
-      //   회원 전용   = equipment(장비 IP)·tasks(일정/이슈)·activity(연동 로그)·progressHistory(추이)·비공개 문서
       function projectIsPublic() {
         return get(/databases/$(database)/documents/projects/$(pid)).data.get('isPublic', false) == true;
       }
@@ -103,25 +103,26 @@ service cloud.firestore {
       }
 
       match /{sub}/{docId} {
-        allow read: if notDisabled() && !isAnonymous();
-        allow write: if notDisabled() && !isAnonymous() && (isProjectOwner() || isMaster());
+        allow read: if notDisabled() && isMember();
+        allow write: if notDisabled() && isMember() && (isProjectOwner() || isMaster());
       }
       match /metrics/{docId} {
-        allow read: if notDisabled() && (!isAnonymous() || projectIsPublic());
+        allow read: if notDisabled() && (isMember() || (isAnonymous() && projectIsPublic()));
       }
       match /updates/{docId} {
-        allow read: if notDisabled() && (!isAnonymous() || projectIsPublic());
+        allow read: if notDisabled() && (isMember() || (isAnonymous() && projectIsPublic()));
       }
       match /documents/{docId} {
         // 게스트는 공개 프로젝트의 isPublic 문서만
         allow read: if notDisabled()
-          && (!isAnonymous() || (projectIsPublic() && resource.data.get('isPublic', false) == true));
+          && (isMember()
+              || (isAnonymous() && projectIsPublic() && resource.data.get('isPublic', false) == true));
       }
       match /comments/{docId} {
-        allow read: if notDisabled() && (!isAnonymous() || projectIsPublic());
-        // 게스트 포함 작성 가능 (게스트는 공개 프로젝트만) — 본인 uid·미확인 상태·길이 제한 강제
+        allow read: if notDisabled() && (isMember() || (isAnonymous() && projectIsPublic()));
+        // 회원 + 게스트(공개 프로젝트만) 작성 가능 — 본인 uid·미확인 상태·길이 제한 강제
         allow create: if notDisabled()
-          && (!isAnonymous() || projectIsPublic())
+          && (isMember() || (isAnonymous() && projectIsPublic()))
           && request.resource.data.authorUid == request.auth.uid
           && request.resource.data.acked == false
           && request.resource.data.text is string
@@ -130,11 +131,11 @@ service cloud.firestore {
           && request.resource.data.author is string
           && request.resource.data.author.size() <= 30;
         // 확인함 처리: 마스터/소유자만
-        allow update: if notDisabled() && !isAnonymous() && (isProjectOwner() || isMaster());
+        allow update: if notDisabled() && isMember() && (isProjectOwner() || isMaster());
         // 삭제: 작성자 본인 또는 마스터/소유자
         allow delete: if notDisabled()
           && (request.auth.uid == resource.data.authorUid
-              || (!isAnonymous() && (isProjectOwner() || isMaster())));
+              || (isMember() && (isProjectOwner() || isMaster())));
       }
     }
   }

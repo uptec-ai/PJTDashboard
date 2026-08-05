@@ -204,6 +204,7 @@ const existing = queryRes.find((r) => r.document)?.document ?? null
 const now = new Date()
 const common = {
   name: draft.name.trim(),
+  category: draft.category === 'personal' ? 'personal' : 'company',
   client: String(draft.client ?? '').trim(),
   description: String(draft.description ?? '').trim(),
   status: ['active', 'hold', 'done', 'stopped'].includes(draft.status) ? draft.status : 'active',
@@ -245,6 +246,7 @@ if (draft.dbDesign && Array.isArray(draft.dbDesign.tables)) {
 
 // 업데이트 시 부분 반영: 초안에 명시된 항목만 덮어쓴다 (빈 값으로 기존 데이터가 지워지는 것 방지)
 const PARTIAL_KEYS = {
+  category: 'category',
   client: 'client', description: 'description', status: 'status', priority: 'priority',
   dueDate: 'dueDate', isPublic: 'isPublic', workflowNote: 'workflowNote',
   sequenceMermaid: 'sequenceMermaid', commitActivity: 'commitDays', dbDesign: 'dbDesign',

@@ -47,9 +47,9 @@ export default function SignupPage() {
       // 아이디 → 이메일 매핑 (아이디 로그인용)
       await reserveUsername(uname, email.trim(), cred.user.uid)
 
-      // 프로필 문서 (기본 등급: 개인, name = 아이디)
+      // 프로필 문서 (가입 직후 = 비회원, 마스터 승인 후 회원으로 전환)
       await setDoc(doc(db, 'users', cred.user.uid), {
-        role: 'personal',
+        role: 'pending',
         name: uname,
         email: email.trim(),
         disabled: false,
@@ -75,7 +75,7 @@ export default function SignupPage() {
     <div className="center-page">
       <form className="auth-card" onSubmit={handleSignup}>
         <h2>회원가입</h2>
-        <div className="sub">가입 후 이메일 인증을 완료해야 이용할 수 있습니다.</div>
+        <div className="sub">가입 → 이메일 인증 → 마스터 승인 후 이용할 수 있습니다.</div>
 
         <div className="field">
           <label htmlFor="su-id">아이디 (로그인에 사용)</label>

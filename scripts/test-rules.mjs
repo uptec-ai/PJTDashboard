@@ -102,14 +102,38 @@ await expectDenied('게스트의 셀프 등급 승격(guest→master)', () =>
 )
 await signOut(auth)
 
-console.log('— 일반 회원(personal) 규칙 —')
+/** 마스터 승인(비회원 → 회원) — 관리자 권한으로 시뮬레이션 */
+async function approve(uid) {
+  await fetch(
+    `http://127.0.0.1:8080/v1/projects/demo-gcs-dashboard/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=role`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: { role: { stringValue: 'personal' } } }),
+    },
+  )
+}
+
+console.log('— 가입 승인 흐름 (비회원 → 회원) —')
 const email = `rules-test-${Math.random().toString(36).slice(2, 8)}@test.local`
 const user = await createUserWithEmailAndPassword(auth, email, 'Test1234!@#$')
-await expectAllowed('본인 프로필(role: personal) 생성', () =>
+await expectDenied('가입 직후 회원(personal) 자가 등록', () =>
   setDoc(doc(db, 'users', user.user.uid), {
-    role: 'personal', name: '테스트', email, phone: '', disabled: false, createdAt: serverTimestamp(),
+    role: 'personal', name: '테스트', email, disabled: false, createdAt: serverTimestamp(),
   }),
 )
+await expectAllowed('가입 직후 비회원(pending) 등록', () =>
+  setDoc(doc(db, 'users', user.user.uid), {
+    role: 'pending', name: '테스트', email, disabled: false, createdAt: serverTimestamp(),
+  }),
+)
+await expectDenied('비회원의 프로젝트 목록 조회', () =>
+  getDocs(collection(db, 'projects')),
+)
+await approve(user.user.uid) // 마스터 승인
+console.log('  ✔ 마스터 승인 시뮬레이션 (pending → personal)')
+
+console.log('— 승인된 회원(personal) 규칙 —')
 await expectDenied('타인 명의(ownerUid 불일치) 프로젝트 생성', () =>
   addDoc(collection(db, 'projects'), projectData('someone-else')),
 )
@@ -141,8 +165,9 @@ await signOut(auth)
 const emailB = `rules-testb-${Math.random().toString(36).slice(2, 8)}@test.local`
 const userB = await createUserWithEmailAndPassword(auth, emailB, 'Test1234!@#$')
 await setDoc(doc(db, 'users', userB.user.uid), {
-  role: 'personal', name: '테스트B', email: emailB, phone: '', disabled: false, createdAt: serverTimestamp(),
+  role: 'pending', name: '테스트B', email: emailB, disabled: false, createdAt: serverTimestamp(),
 })
+await approve(userB.user.uid)
 await expectDenied('타인 프로젝트에 이슈 등록', () =>
   addDoc(collection(db, 'projects', pid, 'tasks'), taskData),
 )

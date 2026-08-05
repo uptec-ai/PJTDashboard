@@ -1,4 +1,4 @@
-export type Role = 'master' | 'personal' | 'guest'
+export type Role = 'master' | 'personal' | 'pending' | 'guest'
 
 export interface UserProfile {
   role: Role
@@ -11,7 +11,8 @@ export interface UserProfile {
 
 export const ROLE_LABEL: Record<Role, string> = {
   master: '마스터',
-  personal: '개인',
+  personal: '회원',
+  pending: '비회원 (승인 대기)',
   guest: '게스트',
 }
 
@@ -33,8 +34,16 @@ export interface Goal {
   items?: GoalItem[] // 세부항목 체크리스트 (표시용 — 목표 %는 별도 관리)
 }
 
+export type ProjectCategory = 'company' | 'personal'
+
+export const CATEGORY_LABEL: Record<ProjectCategory, string> = {
+  company: '회사',
+  personal: '개인',
+}
+
 export interface Project {
   name: string
+  category?: ProjectCategory // 회사/개인 (미지정 = 회사)
   client: string // 거래처 (없으면 '')
   description: string
   status: ProjectStatus

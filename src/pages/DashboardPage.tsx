@@ -9,9 +9,10 @@ import ProjectFormModal from '../components/ProjectFormModal'
 import { daysLeft, saveCardOrder, sortProjects } from '../lib/projects'
 import type { SortKey } from '../lib/projects'
 import { STATUS_LABEL } from '../types'
-import type { PersonalEvent, Project, ProjectRow, ProjectStatus, StudyNote } from '../types'
+import type { PersonalEvent, Project, ProjectCategory, ProjectRow, ProjectStatus, StudyNote } from '../types'
 
 type Filter = 'all' | ProjectStatus
+type CatFilter = 'all' | ProjectCategory
 
 export default function DashboardPage() {
   const { user, profile } = useAuth()
@@ -21,6 +22,13 @@ export default function DashboardPage() {
   const [rows, setRows] = useState<ProjectRow[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('all')
+  const [catFilter, setCatFilter] = useState<CatFilter>(
+    () => (localStorage.getItem('dash-cat') as CatFilter) || 'all',
+  )
+  const setCat = (c: CatFilter) => {
+    setCatFilter(c)
+    localStorage.setItem('dash-cat', c)
+  }
   const [sortKey, setSortKeyState] = useState<SortKey>(
     () => (localStorage.getItem('dash-sort') as SortKey) || 'latest',
   )
@@ -94,8 +102,15 @@ export default function DashboardPage() {
     )
   }, [user, isGuest])
 
-  // ===== KPI 집계 =====
+  // 카테고리 필터 (미지정 프로젝트 = 회사)
+  const catRows = useMemo(
+    () => (catFilter === 'all' ? rows : rows.filter((r) => (r.category ?? 'company') === catFilter)),
+    [rows, catFilter],
+  )
+
+  // ===== KPI 집계 (선택된 카테고리 기준) =====
   const kpi = useMemo(() => {
+    const rows = catRows
     const active = rows.filter((r) => r.status === 'active')
     const avg =
       active.length > 0
@@ -110,13 +125,13 @@ export default function DashboardPage() {
       .sort((a, b) => a - b)[0]
     const issues = rows.reduce((a, r) => a + (r.openIssueCount ?? 0), 0)
     return { total: rows.length, active: active.length, avg, dueSoon: dueSoon.length, nearest, issues }
-  }, [rows])
+  }, [catRows])
 
   // ===== 필터 + 정렬 =====
   const visible = useMemo(() => {
-    const filtered = filter === 'all' ? rows : rows.filter((r) => r.status === filter)
+    const filtered = filter === 'all' ? catRows : catRows.filter((r) => r.status === filter)
     return sortProjects(filtered, sortKey)
-  }, [rows, filter, sortKey])
+  }, [catRows, filter, sortKey])
 
   const canEdit = (p: ProjectRow) => !isGuest && (isMaster || p.ownerUid === user?.uid)
   const canReorder = isMaster // 전체 카드 순서 변경은 마스터만
@@ -188,6 +203,13 @@ export default function DashboardPage() {
 
         {/* ===== 필터 / 정렬 ===== */}
         <div className="filters">
+          <div className="seg">
+            {(['all', 'company', 'personal'] as CatFilter[]).map((c) => (
+              <button key={c} className={catFilter === c ? 'on' : ''} onClick={() => setCat(c)}>
+                {c === 'all' ? '🗂 전체' : c === 'company' ? '🏢 회사' : '👤 개인'}
+              </button>
+            ))}
+          </div>
           <div className="seg">
             {FILTERS.map((f) => (
               <button

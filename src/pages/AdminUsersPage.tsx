@@ -49,8 +49,14 @@ export default function AdminUsersPage() {
       <main className="page">
         <h1>회원 관리</h1>
         <p className="muted" style={{ fontSize: 13, marginTop: -10 }}>
-          등급 변경과 계정 비활성화(로그인 차단)를 할 수 있습니다.
+          가입 승인(비회원 → 회원), 등급 변경, 계정 비활성화(로그인 차단)를 할 수 있습니다.
         </p>
+
+        {rows.some((r) => r.role === 'pending') && (
+          <div className="msg msg-ok">
+            🔔 승인 대기 중인 가입자가 {rows.filter((r) => r.role === 'pending').length}명 있습니다.
+          </div>
+        )}
 
         {error && <div className="msg msg-error">{error}</div>}
 
@@ -81,14 +87,20 @@ export default function AdminUsersPage() {
                             value={r.role}
                             onChange={(e) => changeRole(r.uid, e.target.value as Role)}
                           >
+                            <option value="pending">비회원</option>
                             <option value="guest">게스트</option>
-                            <option value="personal">개인</option>
+                            <option value="personal">회원</option>
                             <option value="master">마스터</option>
                           </select>
                         )}
                       </td>
-                      <td>{r.disabled ? '🚫 비활성화' : '정상'}</td>
-                      <td>
+                      <td>{r.disabled ? '🚫 비활성화' : r.role === 'pending' ? '⏳ 승인 대기' : '정상'}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {!isSelf && r.role === 'pending' && (
+                          <button className="btn btn-sm btn-primary" onClick={() => changeRole(r.uid, 'personal')}>
+                            ✓ 회원 승인
+                          </button>
+                        )}{' '}
                         {!isSelf && (
                           <button
                             className={`btn btn-sm ${r.disabled ? 'btn-ghost' : 'btn-danger'}`}
