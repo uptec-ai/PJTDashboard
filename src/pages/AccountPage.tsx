@@ -7,7 +7,7 @@ import {
   reauthenticateWithCredential,
   updatePassword,
 } from 'firebase/auth'
-import { deleteDoc, doc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { releaseUsername } from '../lib/usernames'
 import { useAuth } from '../contexts/AuthContext'
@@ -69,6 +69,11 @@ export default function AccountPage() {
     setBusy(true)
     try {
       await reauth(delPw)
+      // 내 공간(개인 일정·Study) — 본인만 읽을 수 있으므로 탈퇴 시 여기서 정리
+      for (const sub of ['events', 'notes']) {
+        const snap = await getDocs(collection(db, 'users', user.uid, sub)).catch(() => null)
+        for (const d of snap?.docs ?? []) await deleteDoc(d.ref).catch(() => {})
+      }
       // 프로필/아이디 매핑/ID찾기 문서 정리 후 계정 삭제
       if (profile?.name) {
         await releaseUsername(profile.name)

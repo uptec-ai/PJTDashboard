@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { collection, doc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { countOwnedProjects, deleteUserAccount } from '../lib/adminUsers'
 import { useAuth } from '../contexts/AuthContext'
 import TopBar from '../components/TopBar'
 import { ROLE_LABEL } from '../types'
@@ -39,6 +40,32 @@ export default function AdminUsersPage() {
       await updateDoc(doc(db, 'users', uid), { disabled })
     } catch {
       setError('상태 변경에 실패했습니다.')
+    }
+  }
+
+  /** 회원 삭제 — 프로필·아이디 매핑·내 공간 데이터 정리 */
+  const handleDelete = async (r: Row) => {
+    setError('')
+    const owned = await countOwnedProjects(r.uid)
+    const warn = owned > 0
+      ? `\n\n⚠ 이 회원이 소유한 프로젝트 ${owned}건은 삭제되지 않고 남습니다. (필요하면 마스터가 이어받아 관리하세요)`
+      : ''
+    if (!confirm(
+      `"${r.name || r.email}" 계정을 삭제할까요?\n\n` +
+      `· 프로필과 아이디(${r.name})가 삭제되어 대시보드를 이용할 수 없게 됩니다.\n` +
+      `· 개인 일정·Study는 개인정보라 마스터도 열람·삭제할 수 없습니다 (접근 경로만 사라짐).\n` +
+      `· 되돌릴 수 없습니다.${warn}`,
+    )) return
+
+    try {
+      await deleteUserAccount(r.uid, r)
+      alert(
+        '삭제되었습니다.\n\n' +
+        '로그인 계정 자체를 완전히 없애려면 Firebase 콘솔 > Authentication 에서 해당 계정을 삭제하세요.\n' +
+        '(삭제하지 않아도 프로필이 없어 대시보드는 이용할 수 없습니다)',
+      )
+    } catch {
+      setError('삭제에 실패했습니다.')
     }
   }
 
@@ -102,12 +129,17 @@ export default function AdminUsersPage() {
                           </button>
                         )}{' '}
                         {!isSelf && (
-                          <button
-                            className={`btn btn-sm ${r.disabled ? 'btn-ghost' : 'btn-danger'}`}
-                            onClick={() => toggleDisabled(r.uid, !r.disabled)}
-                          >
-                            {r.disabled ? '활성화' : '비활성화'}
-                          </button>
+                          <>
+                            <button
+                              className={`btn btn-sm ${r.disabled ? 'btn-ghost' : 'btn-danger'}`}
+                              onClick={() => toggleDisabled(r.uid, !r.disabled)}
+                            >
+                              {r.disabled ? '활성화' : '비활성화'}
+                            </button>{' '}
+                            <button className="btn btn-sm btn-danger" onClick={() => handleDelete(r)}>
+                              계정 삭제
+                            </button>
+                          </>
                         )}
                       </td>
                     </tr>

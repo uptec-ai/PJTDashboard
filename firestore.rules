@@ -50,7 +50,8 @@ service cloud.firestore {
       // 탈퇴: 본인 또는 마스터
       allow delete: if (signedIn() && request.auth.uid == uid) || isMaster();
 
-      // ---------- 내 공간 (완전 비공개 — 본인만, 마스터도 열람 불가) ----------
+      // ---------- 내 공간 (완전 비공개 — 본인만, 마스터도 열람·삭제 불가) ----------
+      // 마스터가 계정을 삭제해도 이 데이터는 읽히지 않는다 (프로필이 없어져 접근 경로 자체가 사라짐)
       match /events/{eid} {
         allow read, write: if signedIn() && request.auth.uid == uid;
       }
