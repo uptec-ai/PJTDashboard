@@ -1,10 +1,5 @@
-/** 마스터 편의: "kingkong"처럼 @ 없이 입력하면 내부 이메일 형식으로 변환 */
+/** 로컬 에뮬레이터 마스터 계정용 내부 도메인 (아이디 매핑이 없을 때의 폴백) */
 export const ID_DOMAIN = 'dashboard.local'
-
-export function toEmail(idOrEmail: string): string {
-  const v = idOrEmail.trim()
-  return v.includes('@') ? v : `${v}@${ID_DOMAIN}`
-}
 
 /** PW 정책: 영문 + 숫자 + 특수문자 포함 10자 이상 */
 export function validatePassword(pw: string): string | null {

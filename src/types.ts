@@ -25,14 +25,9 @@ export const ROLE_LABEL: Record<Role, string> = {
   guest: '게스트',
 }
 
-/** 회원 등급(전체 탭 열람) */
+/** 회원 등급(전체 탭 열람) — 비회원은 개요·일정/이슈·문서만 */
 export function isMemberRole(role?: Role): boolean {
   return role === 'personal' || role === 'master'
-}
-
-/** 승인된 로그인 사용자(비회원 이상) — 회사 카테고리 조회 가능 */
-export function isApprovedRole(role?: Role): boolean {
-  return role === 'nonmember' || isMemberRole(role)
 }
 
 // ===== 프로젝트 =====
@@ -54,11 +49,6 @@ export interface Goal {
 }
 
 export type ProjectCategory = 'company' | 'personal'
-
-export const CATEGORY_LABEL: Record<ProjectCategory, string> = {
-  company: '회사',
-  personal: '개인',
-}
 
 export interface Project {
   name: string

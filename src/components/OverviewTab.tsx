@@ -12,6 +12,7 @@ import ProgressChart from './ProgressChart'
 import MermaidDiagram from './MermaidDiagram'
 import MetricsSection from './MetricsSection'
 import CommentsSection from './CommentsSection'
+import { isMemberRole } from '../types'
 import type { ProjectRow } from '../types'
 
 interface HistoryPoint {
@@ -38,8 +39,9 @@ interface Props {
 }
 
 export default function OverviewTab({ project, canEdit, onEdit }: Props) {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const isGuest = user?.isAnonymous ?? false
+  const isMember = isMemberRole(profile?.role) // 활동 캘린더는 회원 이상만
   const [history, setHistory] = useState<HistoryPoint[]>([])
   const [records, setRecords] = useState<DayRecord[]>([])
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
@@ -59,9 +61,9 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
     })
   }, [project.id, isGuest])
 
-  // 대시보드 기록 수집 (탭 진입 시 1회): 일정/이슈·문서·연동·달성률 — 클릭 상세용 라벨 포함
+  // 대시보드 기록 수집 (탭 진입 시 1회): 일정/이슈·문서·연동·달성률 — 활동 캘린더 전용이라 회원 이상만
   useEffect(() => {
-    if (isGuest) return
+    if (!isMember) return
     let active = true
     const load = async () => {
       const out: DayRecord[] = []
@@ -95,7 +97,7 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
     }
     load().catch(() => {})
     return () => { active = false }
-  }, [project.id, isGuest])
+  }, [project.id, isMember])
 
   // 캘린더 이벤트: 커밋(파랑) + 기록(회색)
   const activityEvents: EventInput[] = useMemo(() => {
@@ -139,8 +141,8 @@ export default function OverviewTab({ project, canEdit, onEdit }: Props) {
         </div>
       )}
 
-      {/* 2행: 활동 캘린더 | 클릭 상세 */}
-      {!isGuest && (
+      {/* 2행: 활동 캘린더 | 클릭 상세 — 내부 개발 활동이라 회원 이상만 */}
+      {isMember && (
         <div className="overview-grid">
           <section className="panel">
             <h3>활동 캘린더</h3>

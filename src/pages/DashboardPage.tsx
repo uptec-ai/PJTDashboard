@@ -108,6 +108,11 @@ export default function DashboardPage() {
     )
   }, [user, isGuest, isMaster])
 
+  // 마스터가 아닌데 이전에 '개인' 필터가 저장돼 있으면 빈 화면이 되므로 되돌린다
+  useEffect(() => {
+    if (!canSeePersonalCat && catFilter === 'personal') setCat('all')
+  }, [canSeePersonalCat, catFilter])
+
   // 카테고리 필터 (미지정 프로젝트 = 회사)
   const catRows = useMemo(
     () => (catFilter === 'all' ? rows : rows.filter((r) => (r.category ?? 'company') === catFilter)),
