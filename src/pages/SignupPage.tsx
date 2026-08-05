@@ -75,7 +75,7 @@ export default function SignupPage() {
     <div className="center-page">
       <form className="auth-card" onSubmit={handleSignup}>
         <h2>회원가입</h2>
-        <div className="sub">가입 → 이메일 인증 → 마스터 승인 후 이용할 수 있습니다.</div>
+        <div className="sub">가입 → 이메일 인증 → 회원 승인 대기 → 마스터 승인(비회원) 후 이용할 수 있습니다.</div>
 
         <div className="field">
           <label htmlFor="su-id">아이디 (로그인에 사용)</label>

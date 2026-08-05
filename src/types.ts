@@ -21,7 +21,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   master: '마스터',
   personal: '회원',
   nonmember: '비회원',
-  pending: '승인 대기',
+  pending: '회원 승인 대기',
   guest: '게스트',
 }
 

@@ -98,14 +98,14 @@ export default function AdminUsersPage() {
       <main className="page">
         <h1>회원 관리</h1>
         <p className="muted" style={{ fontSize: 13, marginTop: -10 }}>
-          가입 승인(승인 대기 → 비회원 → 회원), 등급 변경, 비밀번호 재설정, 계정 비활성화·삭제를 할 수 있습니다.
+          회원 승인 대기 → 비회원 승격 → 회원 승격, 비밀번호 재설정, 계정 비활성화·삭제를 할 수 있습니다.
           <br />
           <b>비회원</b>: 회사 프로젝트의 개요·일정/이슈·문서 조회 · <b>회원</b>: 여기에 장비·DB 설계·업데이트 이력까지
         </p>
 
         {rows.some((r) => r.role === 'pending') && (
           <div className="msg msg-ok">
-            🔔 승인 대기 중인 가입자가 {rows.filter((r) => r.role === 'pending').length}명 있습니다.
+            🔔 회원 승인 대기 {rows.filter((r) => r.role === 'pending').length}명 — 승인하면 <b>비회원</b>으로 승격됩니다.
           </div>
         )}
 
@@ -138,7 +138,7 @@ export default function AdminUsersPage() {
                             value={r.role}
                             onChange={(e) => changeRole(r.uid, e.target.value as Role)}
                           >
-                            <option value="pending">승인 대기</option>
+                            <option value="pending">회원 승인 대기</option>
                             <option value="nonmember">비회원</option>
                             <option value="personal">회원</option>
                             <option value="master">마스터</option>
@@ -147,17 +147,17 @@ export default function AdminUsersPage() {
                         )}
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>
-                        {r.disabled ? '🚫 비활성화' : r.role === 'pending' ? '⏳ 승인 대기' : '정상'}
+                        {r.disabled ? '🚫 비활성화' : r.role === 'pending' ? '⏳ 회원 승인 대기' : '정상'}
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>
                         {!isSelf && r.role === 'pending' && (
                           <button className="btn btn-sm btn-primary" onClick={() => changeRole(r.uid, 'nonmember')}>
-                            ✓ 승인 (비회원으로)
+                            ✓ 승인 → 비회원 승격
                           </button>
                         )}{' '}
                         {!isSelf && r.role === 'nonmember' && (
                           <button className="btn btn-sm btn-primary" onClick={() => changeRole(r.uid, 'personal')}>
-                            ↑ 회원으로
+                            ↑ 회원 승격
                           </button>
                         )}{' '}
                         {!isSelf && (
