@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { collection, doc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import { countOwnedProjects, deleteUserFully } from '../lib/adminUsers'
+import { countOwnedProjects, deleteUserFully, setUserPassword } from '../lib/adminUsers'
+import { validatePassword } from '../lib/validators'
 import { useAuth } from '../contexts/AuthContext'
 import TopBar from '../components/TopBar'
 import { ROLE_LABEL } from '../types'
@@ -43,6 +44,25 @@ export default function AdminUsersPage() {
     }
   }
 
+  /** 회원 비밀번호 재설정 (분실 대응) */
+  const handleResetPassword = async (r: Row) => {
+    setError('')
+    const pw = prompt(
+      `"${r.name || r.email}" 계정의 새 비밀번호를 입력하세요.\n` +
+      `(영문 + 숫자 + 특수문자 포함 10자 이상)`,
+    )
+    if (pw === null) return
+    const err = validatePassword(pw)
+    if (err) { alert(err); return }
+
+    try {
+      await setUserPassword(r.uid, pw)
+      alert(`비밀번호가 변경되었습니다.\n본인에게 새 비밀번호를 안전하게 전달하세요.`)
+    } catch {
+      setError('비밀번호 변경에 실패했습니다.')
+    }
+  }
+
   /** 회원 삭제 — 프로필·아이디 매핑·내 공간 데이터 정리 */
   const handleDelete = async (r: Row) => {
     setError('')
@@ -78,7 +98,9 @@ export default function AdminUsersPage() {
       <main className="page">
         <h1>회원 관리</h1>
         <p className="muted" style={{ fontSize: 13, marginTop: -10 }}>
-          가입 승인(비회원 → 회원), 등급 변경, 계정 비활성화(로그인 차단)를 할 수 있습니다.
+          가입 승인(승인 대기 → 비회원 → 회원), 등급 변경, 비밀번호 재설정, 계정 비활성화·삭제를 할 수 있습니다.
+          <br />
+          <b>비회원</b>: 회사 프로젝트의 개요·일정/이슈·문서 조회 · <b>회원</b>: 여기에 장비·DB 설계·업데이트 이력까지
         </p>
 
         {rows.some((r) => r.role === 'pending') && (
@@ -116,22 +138,33 @@ export default function AdminUsersPage() {
                             value={r.role}
                             onChange={(e) => changeRole(r.uid, e.target.value as Role)}
                           >
-                            <option value="pending">비회원</option>
-                            <option value="guest">게스트</option>
+                            <option value="pending">승인 대기</option>
+                            <option value="nonmember">비회원</option>
                             <option value="personal">회원</option>
                             <option value="master">마스터</option>
+                            <option value="guest">게스트</option>
                           </select>
                         )}
                       </td>
-                      <td>{r.disabled ? '🚫 비활성화' : r.role === 'pending' ? '⏳ 승인 대기' : '정상'}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {r.disabled ? '🚫 비활성화' : r.role === 'pending' ? '⏳ 승인 대기' : '정상'}
+                      </td>
                       <td style={{ whiteSpace: 'nowrap' }}>
                         {!isSelf && r.role === 'pending' && (
+                          <button className="btn btn-sm btn-primary" onClick={() => changeRole(r.uid, 'nonmember')}>
+                            ✓ 승인 (비회원으로)
+                          </button>
+                        )}{' '}
+                        {!isSelf && r.role === 'nonmember' && (
                           <button className="btn btn-sm btn-primary" onClick={() => changeRole(r.uid, 'personal')}>
-                            ✓ 회원 승인
+                            ↑ 회원으로
                           </button>
                         )}{' '}
                         {!isSelf && (
                           <>
+                            <button className="btn btn-sm btn-ghost" onClick={() => handleResetPassword(r)}>
+                              비밀번호 변경
+                            </button>{' '}
                             <button
                               className={`btn btn-sm ${r.disabled ? 'btn-ghost' : 'btn-danger'}`}
                               onClick={() => toggleDisabled(r.uid, !r.disabled)}

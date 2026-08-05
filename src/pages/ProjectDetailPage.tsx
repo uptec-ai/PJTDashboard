@@ -12,7 +12,7 @@ import DbDesignTab from '../components/DbDesignTab'
 import UpdatesTab from '../components/UpdatesTab'
 import ProjectFormModal from '../components/ProjectFormModal'
 import { ddayLabel } from '../lib/projects'
-import { STATUS_LABEL } from '../types'
+import { isMemberRole, STATUS_LABEL } from '../types'
 import type { Project, ProjectRow } from '../types'
 
 type Tab = 'overview' | 'equipment' | 'tasks' | 'docs' | 'db' | 'activity'
@@ -76,7 +76,9 @@ export default function ProjectDetailPage() {
   }
 
   const isGuest = user?.isAnonymous ?? false
-  const canEdit = !isGuest && (profile?.role === 'master' || project.ownerUid === user?.uid)
+  const isMasterUser = profile?.role === 'master'
+  const isMemberUser = isMemberRole(profile?.role) // 회원 이상 = 전체 탭
+  const canEdit = isMasterUser // 프로젝트 편집은 마스터 전용
   const dday = ddayLabel(project.dueDate)
 
   return (
@@ -104,32 +106,41 @@ export default function ProjectDetailPage() {
           </div>
         </div>
 
-        {/* ===== 탭 — 게스트: 개요·문서(공개분)·업데이트 이력 / 회원: 전체 ===== */}
+        {/* ===== 탭 — 등급별 노출 =====
+             비회원: 개요 · 일정/이슈 · 문서   |   회원 이상: + 장비 · DB 설계 · 업데이트 이력
+             게스트: 개요 · 문서(공개분) · 업데이트 이력 */}
         <div className="tabs">
           <button className={tab === 'overview' ? 'on' : ''} onClick={() => setTab('overview')}>개요</button>
+          {isMemberUser && (
+            <button className={tab === 'equipment' ? 'on' : ''} onClick={() => setTab('equipment')}>장비</button>
+          )}
           {!isGuest && (
-            <>
-              <button className={tab === 'equipment' ? 'on' : ''} onClick={() => setTab('equipment')}>장비</button>
-              <button className={tab === 'tasks' ? 'on' : ''} onClick={() => setTab('tasks')}>
-                일정 · 이슈{(project.openIssueCount ?? 0) > 0 && <span className="tab-badge">{project.openIssueCount}</span>}
-              </button>
-              <button className={tab === 'db' ? 'on' : ''} onClick={() => setTab('db')}>DB 설계</button>
-            </>
+            <button className={tab === 'tasks' ? 'on' : ''} onClick={() => setTab('tasks')}>
+              일정 · 이슈{(project.openIssueCount ?? 0) > 0 && <span className="tab-badge">{project.openIssueCount}</span>}
+            </button>
           )}
           <button className={tab === 'docs' ? 'on' : ''} onClick={() => setTab('docs')}>문서</button>
-          <button className={tab === 'activity' ? 'on' : ''} onClick={() => setTab('activity')}>업데이트 이력</button>
+          {isMemberUser && (
+            <button className={tab === 'db' ? 'on' : ''} onClick={() => setTab('db')}>DB 설계</button>
+          )}
+          {(isMemberUser || isGuest) && (
+            <button className={tab === 'activity' ? 'on' : ''} onClick={() => setTab('activity')}>업데이트 이력</button>
+          )}
           {isGuest && <span className="guest-note muted">🔒 장비·일정과 비공개 문서는 회원 전용입니다</span>}
+          {!isGuest && !isMemberUser && (
+            <span className="guest-note muted">🔒 장비·DB 설계·업데이트 이력은 회원 전용입니다</span>
+          )}
         </div>
 
         {tab === 'overview' && (
           <OverviewTab project={project} canEdit={canEdit} onEdit={() => setEditOpen(true)} />
         )}
 
-        {tab === 'equipment' && <EquipmentTab pid={project.id} canEdit={canEdit} />}
-        {tab === 'tasks' && <TasksTab pid={project.id} canEdit={canEdit} />}
+        {tab === 'equipment' && isMemberUser && <EquipmentTab pid={project.id} canEdit={canEdit} />}
+        {tab === 'tasks' && !isGuest && <TasksTab pid={project.id} canEdit={canEdit} />}
         {tab === 'docs' && <DocumentsTab pid={project.id} canEdit={canEdit} />}
-        {tab === 'db' && !isGuest && <DbDesignTab project={project} />}
-        {tab === 'activity' && <UpdatesTab pid={project.id} />}
+        {tab === 'db' && isMemberUser && <DbDesignTab project={project} />}
+        {tab === 'activity' && (isMemberUser || isGuest) && <UpdatesTab pid={project.id} />}
       </main>
 
       {editOpen && <ProjectFormModal editing={project} onClose={() => setEditOpen(false)} />}

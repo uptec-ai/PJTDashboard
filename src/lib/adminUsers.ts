@@ -51,6 +51,15 @@ export async function deleteUserAccount(uid: string, profile: UserProfile) {
   await deleteDoc(doc(db, 'users', uid))
 }
 
+/** 마스터가 회원의 비밀번호를 재설정 (분실 대응) — Cloud Functions 필요 */
+export async function setUserPassword(uid: string, password: string): Promise<void> {
+  const fn = httpsCallable<{ uid: string; password: string }, { ok: boolean }>(
+    getFunctions(app, 'asia-northeast3'),
+    'setUserPassword',
+  )
+  await fn({ uid, password })
+}
+
 /** 회원이 소유한 프로젝트 수 (삭제 전 경고용) */
 export async function countOwnedProjects(uid: string): Promise<number> {
   const snap = await getCountFromServer(

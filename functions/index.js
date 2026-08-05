@@ -58,3 +58,37 @@ export const deleteUserAccount = onCall({ region: 'asia-northeast3' }, async (re
 
   return { ok: true, authDeleted, email: target.email ?? '' }
 })
+
+/**
+ * setUserPassword: 마스터가 회원의 비밀번호를 재설정한다.
+ * (분실 대응용 — 사용자 본인은 로그인 후 "내 정보"에서 직접 변경)
+ */
+export const setUserPassword = onCall({ region: 'asia-northeast3' }, async (req) => {
+  const callerUid = req.auth?.uid
+  if (!callerUid) throw new HttpsError('unauthenticated', '로그인이 필요합니다.')
+
+  const callerSnap = await db.doc(`users/${callerUid}`).get()
+  if (callerSnap.data()?.role !== 'master') {
+    throw new HttpsError('permission-denied', '마스터만 비밀번호를 변경할 수 있습니다.')
+  }
+
+  const targetUid = String(req.data?.uid ?? '')
+  const password = String(req.data?.password ?? '')
+  if (!targetUid) throw new HttpsError('invalid-argument', '대상 계정이 필요합니다.')
+
+  // 서버에서도 비밀번호 정책을 강제한다 (영문+숫자+특수문자 10자 이상)
+  const ok = password.length >= 10
+    && /[A-Za-z]/.test(password)
+    && /\d/.test(password)
+    && /[^A-Za-z0-9]/.test(password)
+  if (!ok) {
+    throw new HttpsError('invalid-argument', '비밀번호는 영문·숫자·특수문자를 포함해 10자 이상이어야 합니다.')
+  }
+
+  try {
+    await auth.updateUser(targetUid, { password })
+  } catch (e) {
+    throw new HttpsError('internal', `변경 실패: ${e?.message ?? ''}`)
+  }
+  return { ok: true }
+})

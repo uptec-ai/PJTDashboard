@@ -1,4 +1,12 @@
-export type Role = 'master' | 'personal' | 'pending' | 'guest'
+/**
+ * 등급 체계
+ *  master    마스터   — 모든 기능
+ *  personal  회원     — 회사 카테고리 전체 탭 조회 (개요~업데이트 이력)
+ *  nonmember 비회원   — 회사 카테고리의 개요·일정/이슈·문서만 조회
+ *  pending   승인 대기 — 가입 완료, 마스터 승인 전 (이용 불가)
+ *  guest     게스트   — 익명, 공개 프로젝트의 공개 정보만
+ */
+export type Role = 'master' | 'personal' | 'nonmember' | 'pending' | 'guest'
 
 export interface UserProfile {
   role: Role
@@ -12,8 +20,19 @@ export interface UserProfile {
 export const ROLE_LABEL: Record<Role, string> = {
   master: '마스터',
   personal: '회원',
-  pending: '비회원 (승인 대기)',
+  nonmember: '비회원',
+  pending: '승인 대기',
   guest: '게스트',
+}
+
+/** 회원 등급(전체 탭 열람) */
+export function isMemberRole(role?: Role): boolean {
+  return role === 'personal' || role === 'master'
+}
+
+/** 승인된 로그인 사용자(비회원 이상) — 회사 카테고리 조회 가능 */
+export function isApprovedRole(role?: Role): boolean {
+  return role === 'nonmember' || isMemberRole(role)
 }
 
 // ===== 프로젝트 =====
@@ -58,7 +77,7 @@ export interface Project {
   workflowNote?: string // 프로젝트 동작 설명 (등록 시 Claude가 채움, 수정 가능)
   sequenceMermaid?: string // 시퀀스 다이어그램 (Mermaid 코드)
   commitDays?: { date: string; count: number; messages?: string[] }[] // 날짜별 커밋 수+메시지 (활동 캘린더용)
-  dbDesign?: DbDesign // DB 테이블 설계 (회원 전용 탭)
+  // DB 설계는 회원 전용이라 프로젝트 문서가 아닌 하위 문서(design/db)에 저장한다
   ownerUid: string
   createdAt?: unknown
   updatedAt?: unknown

@@ -1,8 +1,20 @@
-import type { ProjectRow } from '../types'
+import { useEffect, useState } from 'react'
+import { doc, onSnapshot } from 'firebase/firestore'
+import { db } from '../lib/firebase'
+import type { DbDesign, ProjectRow } from '../types'
 
-/** DB 테이블 설계 — 테이블별 컬럼 정의 표 + 기능 한 줄 요약 (회원 전용) */
+/** DB 테이블 설계 — 테이블별 컬럼 정의 표 + 기능 한 줄 요약 (회원 이상 전용) */
 export default function DbDesignTab({ project }: { project: ProjectRow }) {
-  const design = project.dbDesign
+  // 회원 전용 데이터라 프로젝트 문서가 아닌 별도 하위 문서(design/db)에 저장한다
+  const [design, setDesign] = useState<DbDesign | null>(null)
+
+  useEffect(() => {
+    return onSnapshot(
+      doc(db, 'projects', project.id, 'design', 'db'),
+      (snap) => setDesign(snap.exists() ? (snap.data() as DbDesign) : null),
+      () => setDesign(null),
+    )
+  }, [project.id])
 
   if (!design || design.tables.length === 0) {
     return (

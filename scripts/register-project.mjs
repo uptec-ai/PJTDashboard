@@ -227,29 +227,29 @@ if (Array.isArray(draft.commitActivity)) {
       messages: (d.messages ?? []).slice(0, 30).map((m) => String(m).slice(0, 200)),
     }))
 }
-// DB 테이블 설계 — 제공된 경우에만 갱신
-if (draft.dbDesign && Array.isArray(draft.dbDesign.tables)) {
-  common.dbDesign = {
-    dbName: String(draft.dbDesign.dbName ?? ''),
-    note: String(draft.dbDesign.note ?? ''),
-    tables: draft.dbDesign.tables.map((t) => ({
-      name: String(t.name),
-      summary: String(t.summary ?? ''),
-      columns: (t.columns ?? []).map((c) => ({
-        name: String(c.name),
-        type: String(c.type ?? ''),
-        desc: String(c.desc ?? ''),
+// DB 테이블 설계는 회원 전용이라 하위 문서(design/db)에 저장한다 (등록 후 아래에서 기록)
+const dbDesign = draft.dbDesign && Array.isArray(draft.dbDesign.tables)
+  ? {
+      dbName: String(draft.dbDesign.dbName ?? ''),
+      note: String(draft.dbDesign.note ?? ''),
+      tables: draft.dbDesign.tables.map((t) => ({
+        name: String(t.name),
+        summary: String(t.summary ?? ''),
+        columns: (t.columns ?? []).map((c) => ({
+          name: String(c.name),
+          type: String(c.type ?? ''),
+          desc: String(c.desc ?? ''),
+        })),
       })),
-    })),
-  }
-}
+    }
+  : null
 
 // 업데이트 시 부분 반영: 초안에 명시된 항목만 덮어쓴다 (빈 값으로 기존 데이터가 지워지는 것 방지)
 const PARTIAL_KEYS = {
   category: 'category',
   client: 'client', description: 'description', status: 'status', priority: 'priority',
   dueDate: 'dueDate', isPublic: 'isPublic', workflowNote: 'workflowNote',
-  sequenceMermaid: 'sequenceMermaid', commitActivity: 'commitDays', dbDesign: 'dbDesign',
+  sequenceMermaid: 'sequenceMermaid', commitActivity: 'commitDays',
 }
 function updateFieldsOf(commonObj) {
   const keys = new Set(['name', 'updatedAt'])
@@ -299,6 +299,16 @@ if (existing) {
     method: 'POST', headers: HDR,
     body: JSON.stringify({ fields: { date: enc(now), progress: enc(progress) } }),
   })
+}
+
+// ===== DB 설계 (회원 전용 하위 문서) =====
+if (dbDesign) {
+  const r = await fetch(`${FS}/documents/projects/${pid}/design/db`, {
+    method: 'PATCH', headers: HDR,
+    body: JSON.stringify({ fields: Object.fromEntries(Object.entries(dbDesign).map(([k, v]) => [k, enc(v)])) }),
+  })
+  if (!r.ok) { console.error('✖ DB 설계 저장 실패:', (await r.text()).slice(0, 200)); process.exit(1) }
+  console.log(`  🗄 DB 설계 저장 (${dbDesign.tables.length}개 테이블)`)
 }
 
 // ===== 달성률 추이 소급(백필) =====

@@ -18,6 +18,7 @@ export default function DashboardPage() {
   const { user, profile } = useAuth()
   const isGuest = user?.isAnonymous ?? false
   const isMaster = profile?.role === 'master'
+  const canSeePersonalCat = isMaster // 개인 카테고리는 마스터만
 
   const [rows, setRows] = useState<ProjectRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,9 +90,14 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return
-    // 게스트는 공개 프로젝트만 (보안 규칙과 일치하는 조건)
+    // 보안 규칙과 일치하는 조회 조건:
+    //   게스트 = 공개 프로젝트만 / 회원·비회원 = 회사 카테고리만 / 마스터 = 전체
     const base = collection(db, 'projects')
-    const q = isGuest ? query(base, where('isPublic', '==', true)) : query(base)
+    const q = isGuest
+      ? query(base, where('isPublic', '==', true))
+      : isMaster
+        ? query(base)
+        : query(base, where('category', '==', 'company'))
     return onSnapshot(
       q,
       (snap) => {
@@ -100,7 +106,7 @@ export default function DashboardPage() {
       },
       () => setLoading(false),
     )
-  }, [user, isGuest])
+  }, [user, isGuest, isMaster])
 
   // 카테고리 필터 (미지정 프로젝트 = 회사)
   const catRows = useMemo(
@@ -133,8 +139,8 @@ export default function DashboardPage() {
     return sortProjects(filtered, sortKey)
   }, [catRows, filter, sortKey])
 
-  const canEdit = (p: ProjectRow) => !isGuest && (isMaster || p.ownerUid === user?.uid)
-  const canReorder = isMaster // 전체 카드 순서 변경은 마스터만
+  const canEdit = () => isMaster // 프로젝트 등록·수정은 마스터 전용
+  const canReorder = isMaster // 전체 카드 순서 변경도 마스터만
 
   /** 드롭: 끌던 카드를 대상 카드 앞에 끼워 넣고 순서 저장 → 커스텀 정렬로 전환 */
   const handleDrop = async (targetId: string) => {
@@ -203,13 +209,15 @@ export default function DashboardPage() {
 
         {/* ===== 필터 / 정렬 ===== */}
         <div className="filters">
-          <div className="seg">
-            {(['all', 'company', 'personal'] as CatFilter[]).map((c) => (
-              <button key={c} className={catFilter === c ? 'on' : ''} onClick={() => setCat(c)}>
-                {c === 'all' ? '🗂 전체' : c === 'company' ? '🏢 회사' : '👤 개인'}
-              </button>
-            ))}
-          </div>
+          {canSeePersonalCat && (
+            <div className="seg">
+              {(['all', 'company', 'personal'] as CatFilter[]).map((c) => (
+                <button key={c} className={catFilter === c ? 'on' : ''} onClick={() => setCat(c)}>
+                  {c === 'all' ? '🗂 전체' : c === 'company' ? '🏢 회사' : '👤 개인'}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="seg">
             {FILTERS.map((f) => (
               <button
@@ -258,7 +266,7 @@ export default function DashboardPage() {
                 onDragLeave={() => setOverId((cur) => (cur === p.id ? null : cur))}
                 onDrop={(e) => { e.preventDefault(); handleDrop(p.id) }}
               >
-                <ProjectCard project={p} canEdit={canEdit(p)} onEdit={openEdit} />
+                <ProjectCard project={p} canEdit={canEdit()} onEdit={openEdit} />
               </div>
             ))}
           </div>
