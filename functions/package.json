@@ -1,0 +1,14 @@
+{
+  "name": "kongboard-functions",
+  "description": "KongBoard 관리자 기능 (계정 완전 삭제)",
+  "type": "module",
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.2",
+    "firebase-functions": "^6.1.1"
+  },
+  "private": true
+}

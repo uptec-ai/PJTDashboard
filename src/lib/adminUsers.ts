@@ -1,6 +1,28 @@
 import { collection, deleteDoc, doc, getCountFromServer, query, where } from 'firebase/firestore'
-import { db } from './firebase'
+import { getFunctions, httpsCallable } from 'firebase/functions'
+import { app, db } from './firebase'
 import type { UserProfile } from '../types'
+
+/**
+ * 회원 완전 삭제 (마스터) — Cloud Functions로 로그인 계정까지 삭제한다.
+ * 실패 시(함수 미배포 등) Firestore만 정리하는 폴백을 사용한다.
+ */
+export async function deleteUserFully(
+  uid: string,
+  profile: UserProfile,
+): Promise<{ authDeleted: boolean }> {
+  try {
+    const fn = httpsCallable<{ uid: string }, { ok: boolean; authDeleted: boolean }>(
+      getFunctions(app, 'asia-northeast3'),
+      'deleteUserAccount',
+    )
+    const res = await fn({ uid })
+    return { authDeleted: res.data.authDeleted }
+  } catch {
+    await deleteUserAccount(uid, profile) // 폴백: Firestore 데이터만 정리
+    return { authDeleted: false }
+  }
+}
 
 /**
  * 마스터의 회원 삭제 — 프로필·아이디 매핑·ID찾기 문서를 정리한다.

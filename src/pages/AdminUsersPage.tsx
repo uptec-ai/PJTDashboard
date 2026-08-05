@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { collection, doc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import { countOwnedProjects, deleteUserAccount } from '../lib/adminUsers'
+import { countOwnedProjects, deleteUserFully } from '../lib/adminUsers'
 import { useAuth } from '../contexts/AuthContext'
 import TopBar from '../components/TopBar'
 import { ROLE_LABEL } from '../types'
@@ -51,18 +51,20 @@ export default function AdminUsersPage() {
       ? `\n\n⚠ 이 회원이 소유한 프로젝트 ${owned}건은 삭제되지 않고 남습니다. (필요하면 마스터가 이어받아 관리하세요)`
       : ''
     if (!confirm(
-      `"${r.name || r.email}" 계정을 삭제할까요?\n\n` +
-      `· 프로필과 아이디(${r.name})가 삭제되어 대시보드를 이용할 수 없게 됩니다.\n` +
-      `· 개인 일정·Study는 개인정보라 마스터도 열람·삭제할 수 없습니다 (접근 경로만 사라짐).\n` +
+      `"${r.name || r.email}" 계정을 완전히 삭제할까요?\n\n` +
+      `· 로그인 계정, 프로필, 아이디(${r.name}), 개인 일정·Study가 모두 삭제됩니다.\n` +
+      `· 삭제 후 같은 이메일로 다시 가입할 수 있습니다.\n` +
       `· 되돌릴 수 없습니다.${warn}`,
     )) return
 
     try {
-      await deleteUserAccount(r.uid, r)
+      const { authDeleted } = await deleteUserFully(r.uid, r)
       alert(
-        '삭제되었습니다.\n\n' +
-        '로그인 계정 자체를 완전히 없애려면 Firebase 콘솔 > Authentication 에서 해당 계정을 삭제하세요.\n' +
-        '(삭제하지 않아도 프로필이 없어 대시보드는 이용할 수 없습니다)',
+        authDeleted
+          ? '완전히 삭제되었습니다. 같은 이메일로 재가입할 수 있습니다.'
+          : '대시보드 데이터는 삭제했지만 로그인 계정은 남아 있습니다.\n' +
+            '터미널에서 다음을 실행하세요:\n' +
+            `npm run delete-account -- "${r.email}" --prod`,
       )
     } catch {
       setError('삭제에 실패했습니다.')
