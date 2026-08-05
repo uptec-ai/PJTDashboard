@@ -14,7 +14,19 @@
     "site": "kongboard",
     "public": "dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    "rewrites": [{ "source": "**", "destination": "/index.html" }],
+    "headers": [
+      {
+        "comment": "파일명에 해시가 붙는 자산은 영구 캐시 (내용이 바뀌면 파일명도 바뀜)",
+        "source": "/assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      },
+      {
+        "comment": "HTML 등은 캐시 금지 — 배포 직후 최신 화면이 바로 반영되도록",
+        "source": "**/!(*.@(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2))",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      }
+    ]
   },
   "emulators": {
     "auth": { "host": "0.0.0.0", "port": 9099 },
